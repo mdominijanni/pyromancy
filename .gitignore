@@ -1,0 +1,17 @@
+# compiled/optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# sphinx
+docs/*/generated
+docs/_build
+
+# local data
+scratch/
+data/
+runs/
+
+# other
+.DS_Store
+.vscode

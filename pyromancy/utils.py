@@ -1,0 +1,309 @@
+import torch.nn as nn
+from typing import Callable, Iterator, Sequence, Type, TypeVar
+
+
+T = TypeVar("T")
+
+
+def eparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
+    r"""Sets the E-step parameters for a class.
+
+    Returns:
+        Callable[[Type[T]], Type[T]]: class decorator.
+    """
+
+    def decorator_eparameters(cls: Type[T]) -> Type[T]:
+        assert issubclass(cls, nn.Module)
+        assert all(isinstance(f, str) for f in fields)
+
+        if "_e_params_" not in cls.__dict__:
+            params = {*fields}
+            for c in cls.__mro__:
+                params |= {*c.__dict__.get("_e_params_", ())}
+            cls._e_params_ = params
+            cls.__annotations__["_e_params_"] = set[str]
+
+        return cls
+
+    return decorator_eparameters
+
+
+def mparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
+    r"""Sets the M-step parameters for a class.
+
+    Returns:
+        Callable[[Type[T]], Type[T]]: class decorator.
+    """
+
+    def decorator_mparameters(cls: Type[T]) -> Type[T]:
+        assert issubclass(cls, nn.Module)
+        assert all(isinstance(f, str) for f in fields)
+
+        if "_m_params_" not in cls.__dict__:
+            params = {*fields}
+            for c in cls.__mro__:
+                params |= {*c.__dict__.get("_m_params_", ())}
+            cls._m_params_ = params
+            cls.__annotations__["_m_params_"] = set[str]
+
+        return cls
+
+    return decorator_mparameters
+
+
+def get_named_estep_params(
+    module: nn.Module,
+    default: bool = False,
+    exclude: Sequence[nn.Parameter | nn.Module] | None = None,
+    prefix: str = "",
+    recurse: bool = True,
+    remove_duplicate=True,
+) -> Iterator[tuple[str, nn.Parameter]]:
+    r"""Returns an iterator over E-step parameters, yielding both the name of the parameter and the parameter itself.
+
+    Args:
+        module (~torch.nn.Module): module from which to retrieve E-step parameters.
+        exclude (Sequence[nn.Parameter | nn.Module] | None) parameters and modules to exclude.
+            Defaults to None.
+        default (bool, optional): if unspecified parameters should default to E-step parameters.
+            Defaults to False.
+        prefix (str, optional): prefix to prepend to all parameter names.
+            Defaults to "".
+        recurse (bool, optional): if parameters that are not direct members should be included.
+            Defaults to True.
+        remove_duplicate (bool, optional): if duplicated parameters should be excluded.
+            Defaults to True.
+
+    Yields:
+        tuple[str, nn.Parameter]: tuple containing the name and parameter.
+
+    Note:
+        Resolution is performed as follows:
+
+        - if ``_e_params_`` is defined and the identifier for a parameter is in ``_e_params_``,
+          then the parameter is included.
+        - if ``_e_params_`` is not defined but ``_m_params_`` is, and the identifier is in ``_m_params_``,
+          then the parameter is excluded.
+        - if ``_e_params_`` is not defined and ``_m_params_``, if present, does not contain the identifier,
+          then the parameter is included if ``default`` is true and excluded if it is false.
+
+    Note:
+        The E-step parameters for a class that inherits from :py:class:`~torch.nn.Module`
+        are determined by the class attribute ``_e_params_``, containing a list of
+        attribute names.
+    """
+    if exclude is None:
+        memo = set()
+    else:
+        memo = set(exclude)
+
+    if recurse:
+        modules = module.named_modules(prefix=prefix, remove_duplicate=remove_duplicate)
+    else:
+        modules = [(prefix, module)]
+
+    for p, m in modules:
+        if m in memo:
+            continue
+
+        if hasattr(m, "_e_params_"):
+            eparams = frozenset(m._e_params_)
+        else:
+            eparams = None
+        if hasattr(m, "_m_params_"):
+            mparams = frozenset(m._m_params_)
+        else:
+            mparams = None
+
+        params = m._parameters.items()
+        for k, v in params:
+            # skip none and memoized parameters
+            if v is None or v in memo:
+                continue
+            # skip if explicitly not in e-step parameters
+            if eparams is not None and k not in eparams:
+                continue
+            # skip if explicitly in m-step parameters
+            if eparams is None and mparams is not None and k in mparams:
+                continue
+            # skip if defaulting to false
+            if eparams is None and not default:
+                continue
+            # memoize
+            if remove_duplicate:
+                memo.add(v)
+            # yield parameter
+            name = p + ("." if p else "") + k
+            yield name, v
+
+
+def get_estep_params(
+    module: nn.Module,
+    default: bool = False,
+    exclude: Sequence[nn.Parameter | nn.Module] | None = None,
+    recurse: bool = True,
+) -> Iterator[nn.Parameter]:
+    r"""Returns an iterator over E-step parameters.
+
+    Args:
+        module (~torch.nn.Module): module from which to retrieve E-step parameters.
+        default (bool, optional): if unspecified parameters should default to E-step parameters.
+            Defaults to False.
+        exclude (Sequence[nn.Parameter | nn.Module] | None) parameters and modules to exclude.
+            Defaults to None.
+        recurse (bool, optional): if parameters that are not direct members should be included.
+            Defaults to True.
+        remove_duplicate (bool, optional): if duplicated parameters should be excluded.
+            Defaults to True.
+
+    Yields:
+        nn.Parameter: E-step parameter.
+
+    Note:
+        Resolution is performed as follows:
+
+        - if ``_e_params_`` is defined and the identifier for a parameter is in ``_e_params_``,
+          then the parameter is included.
+        - if ``_e_params_`` is not defined but ``_m_params_`` is, and the identifier is in ``_m_params_``,
+          then the parameter is excluded.
+        - if ``_e_params_`` is not defined and ``_m_params_``, if present, does not contain the identifier,
+          then the parameter is included if ``default`` is true and excluded if it is false.
+
+    Note:
+        The E-step parameters for a class that inherits from :py:class:`~torch.nn.Module`
+        are determined by the class attribute ``_e_params_``, containing a list of
+        attribute names.
+    """
+    for _, p in get_named_estep_params(
+        module, default, exclude, recurse=recurse, remove_duplicate=True
+    ):
+        yield p
+
+
+def get_named_mstep_params(
+    module: nn.Module,
+    default: bool = True,
+    exclude: Sequence[nn.Parameter | nn.Module] | None = None,
+    prefix: str = "",
+    recurse: bool = True,
+    remove_duplicate=True,
+) -> Iterator[tuple[str, nn.Parameter]]:
+    r"""Returns an iterator over M-step parameters, yielding both the name of the parameter and the parameter itself.
+
+    Args:
+        module (~torch.nn.Module): module from which to retrieve M-step parameters.
+        default (bool, optional): if unspecified parameters should default to M-step parameters.
+            Defaults to True.
+        exclude (Sequence[nn.Parameter | nn.Module] | None) parameters and modules to exclude.
+            Defaults to None.
+        prefix (str, optional): prefix to prepend to all parameter names.
+            Defaults to "".
+        recurse (bool, optional): if parameters that are not direct members should be included.
+            Defaults to True.
+        remove_duplicate (bool, optional): if duplicated parameters should be excluded.
+            Defaults to True.
+
+    Yields:
+        tuple[str, nn.Parameter]: tuple containing the name and parameter.
+
+    Note:
+        Resolution is performed as follows:
+
+        - if ``_m_params_`` is defined and the identifier for a parameter is in ``_m_params_``,
+          then the parameter is included.
+        - if ``_m_params_`` is not defined but ``_e_params_`` is, and the identifier is in ``_e_params_``,
+          then the parameter is excluded.
+        - if ``_m_params_`` is not defined and ``_e_params_``, if present, does not contain the identifier,
+          then the parameter is included if ``default`` is true and excluded if it is false.
+
+    Note:
+        The M-step parameters for a class that inherits from :py:class:`~torch.nn.Module`
+        are determined by the class attribute ``_m_params_``, containing a list of
+        attribute names.
+    """
+    if exclude is None:
+        memo = set()
+    else:
+        memo = set(exclude)
+
+    if recurse:
+        modules = module.named_modules(prefix=prefix, remove_duplicate=remove_duplicate)
+    else:
+        modules = [(prefix, module)]
+
+    for p, m in modules:
+        if m in memo:
+            continue
+
+        if hasattr(m, "_e_params_"):
+            eparams = frozenset(m._e_params_)
+        else:
+            eparams = None
+        if hasattr(m, "_m_params_"):
+            mparams = frozenset(m._m_params_)
+        else:
+            mparams = None
+
+        params = m._parameters.items()
+        for k, v in params:
+            # skip none and memoized parameters
+            if v is None or v in memo:
+                continue
+            # skip if explicitly not in m-step parameters
+            if mparams is not None and k not in mparams:
+                continue
+            # skip if explicitly in e-step parameters
+            if mparams is None and eparams is not None and k in eparams:
+                continue
+            # skip if defaulting to false
+            if mparams is None and not default:
+                continue
+            # memoize
+            if remove_duplicate:
+                memo.add(v)
+            # yield parameter
+            name = p + ("." if p else "") + k
+            yield name, v
+
+
+def get_mstep_params(
+    module: nn.Module,
+    default: bool = True,
+    exclude: Sequence[nn.Parameter | nn.Module] | None = None,
+    recurse: bool = True,
+) -> Iterator[nn.Parameter]:
+    r"""Returns an iterator over M-step parameters.
+
+    Args:
+        module (~torch.nn.Module): module from which to retrieve M-step parameters.
+        default (bool, optional): if unspecified parameters should default to M-step parameters.
+            Defaults to True.
+        exclude (Sequence[nn.Parameter | nn.Module] | None) parameters and modules to exclude.
+            Defaults to None.
+        recurse (bool, optional): if parameters that are not direct members should be included.
+            Defaults to True.
+        remove_duplicate (bool, optional): if duplicated parameters should be excluded.
+            Defaults to True.
+
+    Yields:
+        nn.Parameter: M-step parameter.
+
+    Note:
+        Resolution is performed as follows:
+
+        - if ``_m_params_`` is defined and the identifier for a parameter is in ``_m_params_``,
+          then the parameter is included.
+        - if ``_m_params_`` is not defined but ``_e_params_`` is, and the identifier is in ``_e_params_``,
+          then the parameter is excluded.
+        - if ``_m_params_`` is not defined and ``_e_params_``, if present, does not contain the identifier,
+          then the parameter is included if ``default`` is true and excluded if it is false.
+
+    Note:
+        The M-step parameters for a class that inherits from :py:class:`~torch.nn.Module`
+        are determined by the class attribute ``_m_params_``, containing a list of
+        attribute names.
+    """
+    for _, p in get_named_estep_params(
+        module, default, exclude, recurse=recurse, remove_duplicate=True
+    ):
+        yield p

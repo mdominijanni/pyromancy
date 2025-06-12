@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyromancy"
+dynamic = ["version"]
+description = ''
+readme = "README.md"
+requires-python = ">=3.11"
+license = "BSD-3-Clause"
+keywords = []
+authors = [
+  { name = "Marissa Dominijanni", email = "mdomini@buffalo.edu" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = []
+
+[project.urls]
+Source = "https://github.com/mdominijanni/pyromancy"
+
+[tool.hatch.version]
+path = "pyromancy/__about__.py"
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:pyromancy test}"
+
+[tool.hatch.metadata]
+package = "pyromancy"
+
+[tool.hatch.build.targets.sdist]
+only-include = ["pyromancy"]
+
+[tool.hatch.build.targets.wheel]
+only-include = ["pyromancy"]
+
+[tool.coverage.run]
+source_pkgs = ["pyromancy", "test"]
+branch = true
+parallel = true
+omit = [
+  "pyromancy/__about__.py",
+]
+
+[tool.coverage.paths]
+pyromancy = ["pyromancy", "*/pyromancy/pyromancy"]
+tests = ["test", "*/test"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
