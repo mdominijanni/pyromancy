@@ -93,9 +93,16 @@ def get_named_estep_params(
         attribute names.
     """
     if exclude is None:
-        memo = set()
-    else:
-        memo = set(exclude)
+        exclude = ()
+
+    memo = set()
+    for item in exclude:
+        if isinstance(item, nn.Parameter):
+            memo |= {item}
+        elif isinstance(item, nn.Module):
+            memo |= {*item.parameters()}
+        else:
+            raise AssertionError
 
     if recurse:
         modules = module.named_modules(prefix=prefix, remove_duplicate=remove_duplicate)
@@ -103,9 +110,6 @@ def get_named_estep_params(
         modules = [(prefix, module)]
 
     for p, m in modules:
-        if m in memo:
-            continue
-
         if hasattr(m, "_e_params_"):
             eparams = frozenset(m._e_params_)
         else:
@@ -222,9 +226,16 @@ def get_named_mstep_params(
         attribute names.
     """
     if exclude is None:
-        memo = set()
-    else:
-        memo = set(exclude)
+        exclude = ()
+
+    memo = set()
+    for item in exclude:
+        if isinstance(item, nn.Parameter):
+            memo |= {item}
+        elif isinstance(item, nn.Module):
+            memo |= {*item.parameters()}
+        else:
+            raise AssertionError
 
     if recurse:
         modules = module.named_modules(prefix=prefix, remove_duplicate=remove_duplicate)
@@ -232,9 +243,6 @@ def get_named_mstep_params(
         modules = [(prefix, module)]
 
     for p, m in modules:
-        if m in memo:
-            continue
-
         if hasattr(m, "_e_params_"):
             eparams = frozenset(m._e_params_)
         else:
