@@ -1,23 +1,25 @@
-from .base import Node, VariationalNode
+from .base import Node, PredictiveNode, VariationalNode
 from .gaussian import (
-    AbstractGaussian,
-    StandardGaussian,
-    IsotropicGaussian,
-    FactorizedGaussian,
-    MultivariateGaussian,
+    AbstractGaussianNode,
+    StandardGaussianNode,
+    IsotropicGaussianNode,
+    FactorizedGaussianNode,
+    MultivariateGaussianNode,
 )
-from .special import Bias
-from .variant import CholeskyMultivariateGaussian
+from .special import BiasNode, FixedNode
+from .variant import LDLMultivariateGaussianNode
 
 
 __all__ = [
     "Node",
+    "PredictiveNode",
     "VariationalNode",
-    "AbstractGaussian",
-    "StandardGaussian",
-    "IsotropicGaussian",
-    "FactorizedGaussian",
-    "MultivariateGaussian",
-    "Bias",
-    "CholeskyMultivariateGaussian",
+    "AbstractGaussianNode",
+    "StandardGaussianNode",
+    "IsotropicGaussianNode",
+    "FactorizedGaussianNode",
+    "MultivariateGaussianNode",
+    "BiasNode",
+    "FixedNode",
+    "LDLMultivariateGaussianNode",
 ]

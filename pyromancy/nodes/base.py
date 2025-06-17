@@ -79,8 +79,8 @@ class Node(nn.Module, ABC):
 
 
 @eparameters("value")
-class VariationalNode(Node, ABC):
-    r"""Base class for predictive coding nodes modelling a variational distribution.
+class PredictiveNode(Node, ABC):
+    r"""Base class for predictive coding nodes that generate predictions.
 
     Args:
         *shape (int | None): base shape of the node's state.
@@ -174,3 +174,34 @@ class VariationalNode(Node, ABC):
             return self.init(inputs)
         else:
             return inputs
+
+
+class VariationalNode(PredictiveNode, ABC):
+    r"""Base class for predictive coding nodes modelling a variational distribution.
+
+    Args:
+        *shape (int | None): base shape of the node's state.
+    """
+
+    value: nn.Parameter
+
+    def __init__(self, *shape: int | None) -> None:
+        Node.__init__(self, *shape)
+
+    @abstractmethod
+    def sample(self, value: torch.Tensor, generator: torch.Generator | None = None) -> torch.Tensor:
+        r"""Samples from the learned variational distribution.
+
+        Args:
+            value (torch.Tensor): location parameter of the variational distribution
+                for sampling.
+            generator (torch.Generator | None, optional): pseudorandom number generator
+                for sampling. Defaults to None.
+
+        Raises:
+            NotImplementedError: must be implemented by subclasses.
+
+        Returns:
+            torch.Tensor: samples from the variational distribution.
+        """
+        raise NotImplementedError

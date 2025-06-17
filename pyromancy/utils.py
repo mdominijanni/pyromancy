@@ -311,7 +311,7 @@ def get_mstep_params(
         are determined by the class attribute ``_m_params_``, containing a list of
         attribute names.
     """
-    for _, p in get_named_estep_params(
+    for _, p in get_named_mstep_params(
         module, default, exclude, recurse=recurse, remove_duplicate=True
     ):
         yield p

@@ -11,6 +11,7 @@
     :toctree: generated
 
     Node
+    PredictiveNode
     VariationalNode
 ```
 
@@ -20,11 +21,11 @@
     :nosignatures:
     :toctree: generated
 
-    AbstractGaussian
-    StandardGaussian
-    IsotropicGaussian
-    FactorizedGaussian
-    MultivariateGaussian
+    AbstractGaussianNode
+    StandardGaussianNode
+    IsotropicGaussianNode
+    FactorizedGaussianNode
+    MultivariateGaussianNode
 ```
 
 ## Special Nodes
@@ -33,7 +34,8 @@
     :nosignatures:
     :toctree: generated
 
-    Bias
+    BiasNode
+    FixedNode
 ```
 
 ## Variant Nodes
@@ -46,5 +48,5 @@ implementations.
     :nosignatures:
     :toctree: generated
 
-    CholeskyMultivariateGaussian
+    LDLMultivariateGaussianNode
 ```
