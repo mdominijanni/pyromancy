@@ -66,29 +66,67 @@ class Shape:
 
     @property
     def rawshape(self) -> tuple[int | None, ...]:
+        r"""Tensor shape, including placeholder dimensions.
+
+        Returns:
+            tuple[int | None, ...]: raw tensor shape.
+        """
         return self._rawshape
 
     @property
     def shape(self) -> tuple[int, ...]:
+        r"""Tensor shape, with placeholder dimensions set to unit length.
+
+        Returns:
+            tuple[int | None, ...]: broadcastable tensor shape.
+        """
         return tuple(1 if s is None else s for s in self._rawshape)
 
     @property
     def size(self) -> int:
+        r"""Number of elements specified by the shape.
+
+        Returns:
+            int: minimal number of tensor elements.
+        """
         return math.prod(self.shape)
 
     @property
     def ndim(self) -> int:
+        r"""Number of dimensions specified by the shape.
+
+        Returns:
+            int: dimensionality of a compatible tensor.
+        """
         return len(self._rawshape)
 
     @property
     def nconcrete(self) -> int:
+        r"""Number of fixed dimensions.
+
+        Returns:
+            int: number of concrete dimensions.
+        """
         return len(self._concrete_dims)
 
     @property
     def nvirtual(self) -> int:
+        r"""Number of placeholder dimensions.
+
+        Returns:
+            int: number of virtual dimensions.
+        """
         return len(self._virtual_dims)
 
     def compat(self, *shape: int) -> bool:
+        r"""Tests if a shape is compatible with the specified constraints.
+
+        Args:
+            *shape (int | None): dimensions of the tensor.
+
+        Returns:
+            bool: if the shape is compatible.
+        """
         assert all(isinstance(d, int) for d in shape)
         assert all(d > 0 for d in shape)
 
@@ -102,6 +140,11 @@ class Shape:
         return True
 
     def filled(self, *fill: int) -> tuple[int, ...]:
+        r"""Fills placeholder dimensions with specified values.
+
+        Returns:
+            tuple[int, ...]: shape with the placeholder dimensions filled.
+        """
         assert len(fill) == self.nvirtual
         assert all(isinstance(d, int) for d in fill)
         assert all(d > 0 for d in fill)

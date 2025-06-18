@@ -1,8 +1,50 @@
 import torch.nn as nn
-from typing import Callable, Iterator, Sequence, Type, TypeVar
+from typing import Any, Callable, Iterator, Sequence, Type, TypeVar
 
 
 T = TypeVar("T")
+
+
+def _get_declared_estep_params(cls: type, /, *default: Any) -> dict[str, None] | Any:
+    r"""Get all declared E-step parameter names in the MRO chain.
+
+    Args:
+        cls (type): class to find E-step parameters for.
+        default (Any, optional): default return value. Defaults to an empty :py:class:`dict`.
+
+    Returns:
+        dict[str, None] | None: E-step parameters names if any are declared, otherwise ``None``.
+    """
+    params = {}
+
+    for c in cls.__mro__:
+        params |= c.__dict__.get("_e_params_", {})
+
+    if default:
+        return params if params else default[0]
+    else:
+        return params
+
+
+def _get_declared_mstep_params(cls: type, /, *default: Any) -> dict[str, None] | Any:
+    r"""Get all declared M-step parameter names in the MRO chain.
+
+    Args:
+        cls (type): class to find M-step parameters for.
+        default (Any, optional): default return value. Defaults to an empty :py:class:`dict`.
+
+    Returns:
+        dict[str, None] | None: M-step parameters names if any are declared, otherwise ``None``.
+    """
+    params = {}
+
+    for c in cls.__mro__:
+        params |= c.__dict__.get("_m_params_", {})
+
+    if default:
+        return params if params else default[0]
+    else:
+        return params
 
 
 def eparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
@@ -10,6 +52,11 @@ def eparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
 
     Returns:
         Callable[[Type[T]], Type[T]]: class decorator.
+
+    Important:
+        If a class inherits from multiple classes defining E-step parameters, then even
+        if it does not directly specify any E-step parameters it should still be
+        decorated with ``@eparameters()`` to collate all superclass E-step parameters.
     """
 
     def decorator_eparameters(cls: Type[T]) -> Type[T]:
@@ -17,11 +64,8 @@ def eparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
         assert all(isinstance(f, str) for f in fields)
 
         if "_e_params_" not in cls.__dict__:
-            params = {f: None for f in fields}
-            for c in cls.__mro__:
-                params |= c.__dict__.get("_e_params_", {})
-            cls._e_params_ = params
-            cls.__annotations__["_e_params_"] = set[str]
+            cls._e_params_ = {f: None for f in fields} | _get_declared_estep_params(cls)
+            cls.__annotations__["_e_params_"] = dict[str, Any]
 
         return cls
 
@@ -33,6 +77,11 @@ def mparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
 
     Returns:
         Callable[[Type[T]], Type[T]]: class decorator.
+
+    Important:
+        If a class inherits from multiple classes defining M-step parameters, then even
+        if it does not directly specify any M-step parameters it should still be
+        decorated with ``@mparameters()`` to collate all superclass M-step parameters.
     """
 
     def decorator_mparameters(cls: Type[T]) -> Type[T]:
@@ -40,11 +89,8 @@ def mparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
         assert all(isinstance(f, str) for f in fields)
 
         if "_m_params_" not in cls.__dict__:
-            params = {f: None for f in fields}
-            for c in cls.__mro__:
-                params |= c.__dict__.get("_m_params_", {})
-            cls._m_params_ = params
-            cls.__annotations__["_m_params_"] = set[str]
+            cls._m_params_ = {f: None for f in fields} | _get_declared_mstep_params(cls)
+            cls.__annotations__["_m_params_"] = dict[str, Any]
 
         return cls
 
@@ -87,6 +133,9 @@ def get_named_estep_params(
         - if ``_e_params_`` is not defined and ``_m_params_``, if present, does not contain the identifier,
           then the parameter is included if ``default`` is true and excluded if it is false.
 
+        This resolution is performed on the combined ``_e_params_`` from the given module's
+        class and all its superclasses.
+
     Note:
         The E-step parameters for a class that inherits from :py:class:`~torch.nn.Module`
         are determined by the class attribute ``_e_params_``, containing a list of
@@ -110,14 +159,12 @@ def get_named_estep_params(
         modules = [(prefix, module)]
 
     for p, m in modules:
-        if hasattr(m, "_e_params_"):
-            eparams = frozenset(m._e_params_)
-        else:
-            eparams = None
-        if hasattr(m, "_m_params_"):
-            mparams = frozenset(m._m_params_)
-        else:
-            mparams = None
+        eparams = _get_declared_estep_params(type(m), None)
+        if eparams is not None:
+            eparams = frozenset(eparams)
+        mparams = _get_declared_mstep_params(type(m), None)
+        if mparams is not None:
+            mparams = frozenset(mparams)
 
         params = m._parameters.items()
         for k, v in params:
@@ -173,6 +220,9 @@ def get_estep_params(
         - if ``_e_params_`` is not defined and ``_m_params_``, if present, does not contain the identifier,
           then the parameter is included if ``default`` is true and excluded if it is false.
 
+        This resolution is performed on the combined ``_e_params_`` from the given module's
+        class and all its superclasses.
+
     Note:
         The E-step parameters for a class that inherits from :py:class:`~torch.nn.Module`
         are determined by the class attribute ``_e_params_``, containing a dictionary of
@@ -220,6 +270,9 @@ def get_named_mstep_params(
         - if ``_m_params_`` is not defined and ``_e_params_``, if present, does not contain the identifier,
           then the parameter is included if ``default`` is true and excluded if it is false.
 
+        This resolution is performed on the combined ``_m_params_`` from the given module's
+        class and all its superclasses.
+
     Note:
         The M-step parameters for a class that inherits from :py:class:`~torch.nn.Module`
         are determined by the class attribute ``_m_params_``, containing a dictionary of
@@ -243,14 +296,12 @@ def get_named_mstep_params(
         modules = [(prefix, module)]
 
     for p, m in modules:
-        if hasattr(m, "_e_params_"):
-            eparams = frozenset(m._e_params_)
-        else:
-            eparams = None
-        if hasattr(m, "_m_params_"):
-            mparams = frozenset(m._m_params_)
-        else:
-            mparams = None
+        eparams = _get_declared_estep_params(type(m), None)
+        if eparams is not None:
+            eparams = frozenset(eparams)
+        mparams = _get_declared_mstep_params(type(m), None)
+        if mparams is not None:
+            mparams = frozenset(mparams)
 
         params = m._parameters.items()
         for k, v in params:
@@ -305,6 +356,9 @@ def get_mstep_params(
           then the parameter is excluded.
         - if ``_m_params_`` is not defined and ``_e_params_``, if present, does not contain the identifier,
           then the parameter is included if ``default`` is true and excluded if it is false.
+
+        This resolution is performed on the combined ``_m_params_`` from the given module's
+        class and all its superclasses.
 
     Note:
         The M-step parameters for a class that inherits from :py:class:`~torch.nn.Module`

@@ -60,8 +60,37 @@ class SpecifiedEM(nn.Module):
 class InheritedEM(SpecifiedE, SpecifiedM):
 
     def __init__(self) -> None:
+
         SpecifiedE.__init__(self)
         SpecifiedM.__init__(self)
+
+
+@eparameters("e1", "e2")
+class SpecifiedEMixin(nn.Module):
+
+    def __init__(self) -> None:
+        self.e1 = nn.Parameter(torch.rand(()), False)
+        self.e2 = nn.Parameter(torch.rand(()), False)
+        self.p1 = nn.Parameter(torch.rand(()), False)
+        self.p2 = nn.Parameter(torch.rand(()), False)
+
+
+@mparameters("m1", "m2")
+class SpecifiedMMixin(nn.Module):
+
+    def __init__(self) -> None:
+        self.m1 = nn.Parameter(torch.rand(()), False)
+        self.m2 = nn.Parameter(torch.rand(()), False)
+        self.p1 = nn.Parameter(torch.rand(()), False)
+        self.p2 = nn.Parameter(torch.rand(()), False)
+
+
+class ImproperlyInheritedEM(SpecifiedE, SpecifiedM):
+
+    def __init__(self) -> None:
+        nn.Module.__init__(self)
+        SpecifiedEMixin.__init__(self)
+        SpecifiedMMixin.__init__(self)
 
 
 class TestEParameters:
@@ -103,6 +132,17 @@ class TestMParameters:
 
 
 class TestGetNamedEStepParams:
+
+    @pytest.mark.parametrize(
+        "default", (True, False), ids=("default=True", "default=False")
+    )
+    def test_improperly_inherited_eparam(self, default):
+        m = ImproperlyInheritedEM()
+
+        sol = {"e1": m.e1, "e2": m.e2}
+        res = {n: p for n, p in get_named_estep_params(m, default=default)}
+
+        assert sol == res
 
     @pytest.mark.parametrize(
         "default", (True, False), ids=("default=True", "default=False")
@@ -180,6 +220,17 @@ class TestGetEStepParams:
     @pytest.mark.parametrize(
         "default", (True, False), ids=("default=True", "default=False")
     )
+    def test_improperly_inherited_eparam(self, default):
+        m = ImproperlyInheritedEM()
+
+        sol = {m.e1, m.e2}
+        res = {*get_estep_params(m, default=default)}
+
+        assert sol == res
+
+    @pytest.mark.parametrize(
+        "default", (True, False), ids=("default=True", "default=False")
+    )
     def test_specified_eparam(self, default):
         m = SpecifiedE()
         m.inner = SpecifiedE()
@@ -234,6 +285,17 @@ class TestGetEStepParams:
 
 
 class TestGetNamedMStepParams:
+
+    @pytest.mark.parametrize(
+        "default", (True, False), ids=("default=True", "default=False")
+    )
+    def test_improperly_inherited_mparam(self, default):
+        m = ImproperlyInheritedEM()
+
+        sol = {"m1": m.m1, "m2": m.m2}
+        res = {n: p for n, p in get_named_mstep_params(m, default=default)}
+
+        assert sol == res
 
     @pytest.mark.parametrize(
         "default", (True, False), ids=("default=True", "default=False")
@@ -307,6 +369,17 @@ class TestGetNamedMStepParams:
 
 
 class TestGetMStepParams:
+
+    @pytest.mark.parametrize(
+        "default", (True, False), ids=("default=True", "default=False")
+    )
+    def test_improperly_inherited_mparam(self, default):
+        m = ImproperlyInheritedEM()
+
+        sol = {m.m1, m.m2}
+        res = {*get_mstep_params(m, default=default)}
+
+        assert sol == res
 
     @pytest.mark.parametrize(
         "default", (True, False), ids=("default=True", "default=False")

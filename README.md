@@ -1,7 +1,7 @@
-# Pyromancy
+![Pyromancy Header](misc/assets/pyromancy-github-header.png)
 
-[![PyPI - Version](https://img.shields.io/pypi/v/pyromancy-pc.svg)](https://pypi.org/project/pyromancy-pc)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pyromancy-pc.svg)](https://pypi.org/project/pyromancy-pc)
+[![PyPI - Version](https://img.shields.io/pypi/v/pyromancy-ai.svg)](https://pypi.org/project/pyromancy-ai)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pyromancy-pc.svg)](https://pypi.org/project/pyromancy-ai)
 
 -----
 
@@ -13,9 +13,9 @@
 ## Installation
 
 ```console
-pip install pyromancy-pc
+pip install pyromancy-ai
 ```
 
 ## License
 
-`pyromancy` is distributed under the terms of the [BSD-3-Clause](https://spdx.org/licenses/BSD-3-Clause.html) license.
+The `pyromancy` library is distributed under the terms of the [BSD-3-Clause](https://spdx.org/licenses/BSD-3-Clause.html) license.
