@@ -119,10 +119,13 @@ class PredictiveNode(Node, ABC):
             ~torch.nn.parameter.Parameter: the reinitialized value.
 
         Raises:
-            RuntimeError: shape of ``value`` is incompatible with the node.
+            ValueError: shape of ``value`` is incompatible with the node.
         """
-
-        assert self.shapeobj.compat(*value.shape)
+        if not self.shapeobj.compat(*value.shape):
+            raise ValueError(
+                f"shape of `value` {(*value.shape,)} is incompatible "
+                f"with node shape {(*self.shapeobj,)}"
+            )
 
         self.value.data = self.value.data.new_empty(*value.shape)
         self.value.copy_(value)

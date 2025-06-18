@@ -24,9 +24,12 @@ class Shape:
     _disperse_str: str
 
     def __init__(self, *shape: int | None) -> None:
-        assert len(shape) > 0
-        assert all(isinstance(s, int | None) for s in shape)
-        assert all(s > 0 for s in shape if s is not None)
+        if not len(shape) > 0:
+            raise ValueError("`shape` must contain at least one element")
+        if not all(isinstance(s, int | None) for s in shape):
+            raise TypeError("all elements of `shape` must be of type `int` or `None`")
+        if not all(s > 0 for s in shape if s is not None):
+            raise ValueError("all integer elements of `shape` must be positive")
 
         self._rawshape = tuple(int(s) if s is not None else None for s in shape)
         self._concrete_dims = tuple(
@@ -127,8 +130,10 @@ class Shape:
         Returns:
             bool: if the shape is compatible.
         """
-        assert all(isinstance(d, int) for d in shape)
-        assert all(d > 0 for d in shape)
+        if not all(isinstance(d, int) for d in shape):
+            raise TypeError("all elements of `shape` must be of type `int`")
+        if not all(d > 0 for d in shape):
+            raise ValueError("all elements of `shape` must be positive")
 
         if len(shape) != len(self._rawshape):
             return False
@@ -145,9 +150,14 @@ class Shape:
         Returns:
             tuple[int, ...]: shape with the placeholder dimensions filled.
         """
-        assert len(fill) == self.nvirtual
-        assert all(isinstance(d, int) for d in fill)
-        assert all(d > 0 for d in fill)
+        if not len(fill) == self.nvirtual:
+            raise ValueError(
+                "`fill` must contain exactly the required number of placeholder elements"
+            )
+        if not all(isinstance(d, int) for d in fill):
+            raise TypeError("all elements of `fill` must be of type `int`")
+        if not all(d > 0 for d in fill):
+            raise ValueError("all elements of `fill` must be positive")
 
         shape = [*self._rawshape]
         for n, d in enumerate(self._virtual_dims):

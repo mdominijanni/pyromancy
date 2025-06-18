@@ -60,8 +60,10 @@ def eparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
     """
 
     def decorator_eparameters(cls: Type[T]) -> Type[T]:
-        assert issubclass(cls, nn.Module)
-        assert all(isinstance(f, str) for f in fields)
+        if not issubclass(cls, nn.Module):
+            raise TypeError("`cls` must be a subclass of `torch.nn.Module`")
+        if not all(isinstance(f, str) for f in fields):
+            raise TypeError("all elements of `fields` must be of type str")
 
         if "_e_params_" not in cls.__dict__:
             cls._e_params_ = {f: None for f in fields} | _get_declared_estep_params(cls)
@@ -85,8 +87,10 @@ def mparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
     """
 
     def decorator_mparameters(cls: Type[T]) -> Type[T]:
-        assert issubclass(cls, nn.Module)
-        assert all(isinstance(f, str) for f in fields)
+        if not issubclass(cls, nn.Module):
+            raise TypeError("`cls` must be a subclass of `torch.nn.Module`")
+        if not all(isinstance(f, str) for f in fields):
+            raise TypeError("all elements of `fields` must be of type str")
 
         if "_m_params_" not in cls.__dict__:
             cls._m_params_ = {f: None for f in fields} | _get_declared_mstep_params(cls)
@@ -151,7 +155,10 @@ def get_named_estep_params(
         elif isinstance(item, nn.Module):
             memo |= {*item.parameters()}
         else:
-            raise AssertionError
+            raise TypeError(
+                "all elements of `exclude` must be of type "
+                "`torch.nn.Parameter` or of type `torch.nn.Module"
+            )
 
     if recurse:
         modules = module.named_modules(prefix=prefix, remove_duplicate=remove_duplicate)
@@ -288,7 +295,10 @@ def get_named_mstep_params(
         elif isinstance(item, nn.Module):
             memo |= {*item.parameters()}
         else:
-            raise AssertionError
+            raise TypeError(
+                "all elements of `exclude` must be of type "
+                "`torch.nn.Parameter` or of type `torch.nn.Module"
+            )
 
     if recurse:
         modules = module.named_modules(prefix=prefix, remove_duplicate=remove_duplicate)

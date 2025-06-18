@@ -1,7 +1,7 @@
 ![Pyromancy Header](misc/assets/pyromancy-github-header.png)
 
 [![PyPI - Version](https://img.shields.io/pypi/v/pyromancy-ai.svg)](https://pypi.org/project/pyromancy-ai)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pyromancy-pc.svg)](https://pypi.org/project/pyromancy-ai)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pyromancy-ai.svg)](https://pypi.org/project/pyromancy-ai)
 
 -----
 

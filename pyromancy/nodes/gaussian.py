@@ -157,7 +157,7 @@ class IsotropicGaussianNode(AbstractGaussianNode):
 
     Args:
         *shape (int | None): shape of the node's learned state.
-        variance (float, optional): initial variance. Defaults to 1.0.
+        variance (float | ~torch.Tensor, optional): initial variance. Defaults to 1.0.
 
     Attributes:
         value (~torch.nn.parameter.Parameter): value of the node :math:`\mathbf{z}`.
@@ -166,13 +166,12 @@ class IsotropicGaussianNode(AbstractGaussianNode):
 
     logvar: nn.Parameter
 
-    def __init__(self, *shape: int | None, variance: float = 1.0) -> None:
-        assert variance > 0
+    def __init__(
+        self, *shape: int | None, variance: float | torch.Tensor = 1.0
+    ) -> None:
         AbstractGaussianNode.__init__(self, *shape)
         self.logvar = nn.Parameter(torch.empty([]), True)
-
-        with torch.no_grad():
-            self.logvar.fill_(math.log(variance))
+        self.covariance = variance
 
     @property
     def covariance(self) -> torch.Tensor:
@@ -186,6 +185,13 @@ class IsotropicGaussianNode(AbstractGaussianNode):
 
         Returns:
             ~torch.Tensor: covariance of the distribution.
+
+        Note:
+            Assigment of variances is performed as follows:
+
+            - 0D-Tensor (or float): single variance is used.
+            - 1D-Tensor: vector of variances are averaged.
+            - 2D-Tensor: diagonal of the covariance matrix is averaged.
         """
         return self.logvar.exp() * torch.eye(
             self.size, dtype=self.logvar.dtype, device=self.logvar.device
@@ -195,24 +201,58 @@ class IsotropicGaussianNode(AbstractGaussianNode):
     @torch.no_grad()
     def covariance(self, value: float | torch.Tensor) -> None:
         if not isinstance(value, torch.Tensor):
-            assert value > 0
+            if not value > 0:
+                raise ValueError("variance must be positive")
+
             self.logvar.fill_(math.log(value))
+
         else:
             match value.ndim:
+                # scalar (isotropic multivariate)
                 case 0:
-                    assert value > 0
+                    if not value > 0:
+                        raise ValueError("variance must be positive")
+
                     self.logvar.fill_(value.log())
+
+                # vector (factorized multivariate)
                 case 1:
-                    assert value.numel() == self.size
-                    assert torch.all(value > 0)
+                    if not value.numel() == self.size:
+                        raise ValueError(
+                            "`covariance` must be specified as a scalar, a vector of "
+                            f"{self.size}, or a {self.size} x {self.size} matrix"
+                        )
+                    if not torch.all(value > 0):
+                        raise ValueError(
+                            "all elements of the variance vector must be positive"
+                        )
+
                     self.logvar.fill_(value.mean().log())
+
+                # matrix (full multivariate)
                 case 2:
-                    assert all(sz == self.size for sz in value.shape)
+                    if not all(sz == self.size for sz in value.shape):
+                        raise ValueError(
+                            "`covariance` must be specified as a scalar, a vector of "
+                            f"{self.size}, or a {self.size} x {self.size} matrix"
+                        )
+
                     _, info = torch.linalg.cholesky_ex(value)
-                    assert info.item() == 0
+
+                    if not info.item() == 0:
+                        raise ValueError(
+                            "the covariance matrix must be "
+                            "symmetric and positive-definite"
+                        )
+
                     self.logvar.fill_(value.diag().mean().log())
+
+                # invalid tensor dimensionality
                 case _:
-                    assert value.ndim <= 2
+                    raise ValueError(
+                        "`covariance` must be specified as a scalar, a vector of "
+                        f"{self.size}, or a {self.size} x {self.size} matrix"
+                    )
 
     def error(self, pred: torch.Tensor) -> torch.Tensor:
         r"""Error between the prediction and node state.
@@ -298,13 +338,12 @@ class FactorizedGaussianNode(AbstractGaussianNode):
 
     logvar: nn.Parameter
 
-    def __init__(self, *shape: int | None, variance: float = 1.0) -> None:
-        assert variance > 0
+    def __init__(
+        self, *shape: int | None, variance: float | torch.Tensor = 1.0
+    ) -> None:
         AbstractGaussianNode.__init__(self, *shape)
         self.logvar = nn.Parameter(torch.empty([self.size]), True)
-
-        with torch.no_grad():
-            self.logvar.fill_(math.log(variance))
+        self.covariance = variance
 
     @property
     def covariance(self) -> torch.Tensor:
@@ -319,6 +358,13 @@ class FactorizedGaussianNode(AbstractGaussianNode):
 
         Returns:
             ~torch.Tensor: covariance of the distribution.
+
+        Note:
+            Assigment of variances is performed as follows:
+
+            - 0D-Tensor (or float): single variance is used.
+            - 1D-Tensor: vector of variances is used.
+            - 2D-Tensor: diagonal of the covariance matrix is used.
         """
         return torch.diag(self.logvar.exp())
 
@@ -326,24 +372,58 @@ class FactorizedGaussianNode(AbstractGaussianNode):
     @torch.no_grad()
     def covariance(self, value: float | torch.Tensor) -> None:
         if not isinstance(value, torch.Tensor):
-            assert value > 0
+            if not value > 0:
+                raise ValueError("variance must be positive")
+
             self.logvar.fill_(math.log(value))
+
         else:
             match value.ndim:
+                # scalar (isotropic multivariate)
                 case 0:
-                    assert value > 0
+                    if not value > 0:
+                        raise ValueError("variance must be positive")
+
                     self.logvar.fill_(value.log())
+
+                # vector (factorized multivariate)
                 case 1:
-                    assert value.numel() == self.size
-                    assert torch.all(value > 0)
+                    if not value.numel() == self.size:
+                        raise ValueError(
+                            "`covariance` must be specified as a scalar, a vector of "
+                            f"{self.size}, or a {self.size} x {self.size} matrix"
+                        )
+                    if not torch.all(value > 0):
+                        raise ValueError(
+                            "all elements of the variance vector must be positive"
+                        )
+
                     self.logvar.copy_(value.log())
+
+                # matrix (full multivariate)
                 case 2:
-                    assert all(sz == self.size for sz in value.shape)
+                    if not all(sz == self.size for sz in value.shape):
+                        raise ValueError(
+                            "`covariance` must be specified as a scalar, a vector of "
+                            f"{self.size}, or a {self.size} x {self.size} matrix"
+                        )
+
                     _, info = torch.linalg.cholesky_ex(value)
-                    assert info.item() == 0
+
+                    if not info.item() == 0:
+                        raise ValueError(
+                            "the covariance matrix must be "
+                            "symmetric and positive-definite"
+                        )
+
                     self.logvar.copy_(value.diag().log())
+
+                # invalid tensor dimensionality
                 case _:
-                    assert value.ndim <= 2
+                    raise ValueError(
+                        "`covariance` must be specified as a scalar, a vector of "
+                        f"{self.size}, or a {self.size} x {self.size} matrix"
+                    )
 
     def error(self, pred: torch.Tensor) -> torch.Tensor:
         r"""Error between the prediction and node state.
@@ -433,16 +513,13 @@ class MultivariateGaussianNode(AbstractGaussianNode):
     covar_cf_logdiag: nn.Parameter
     covar_cf_offtril: nn.Parameter
 
-    def __init__(self, *shape: int | None, variance: float = 1.0) -> None:
-        assert variance > 0
+    def __init__(
+        self, *shape: int | None, covariance: float | torch.Tensor = 1.0
+    ) -> None:
         AbstractGaussianNode.__init__(self, *shape)
-
         self.covar_cf_logdiag = nn.Parameter(torch.empty([self.size]), True)
         self.covar_cf_offtril = nn.Parameter(torch.empty([self.size, self.size]), True)
-
-        with torch.no_grad():
-            self.covar_cf_logdiag.fill_(math.log(math.sqrt(variance)))
-            self.covar_cf_offtril.fill_(0.0)
+        self.covariance = covariance
 
     def _cholesky_factor_l(self) -> torch.Tensor:
         r"""Computes the Cholesky decomposition factor :math:`L` of the covariance matrix.
@@ -470,6 +547,13 @@ class MultivariateGaussianNode(AbstractGaussianNode):
 
         Returns:
             ~torch.Tensor: covariance of the distribution.
+
+        Note:
+            Assigment of covariances is performed as follows:
+
+            - 0D-Tensor (or float): single variance is used, with zero covariance.
+            - 1D-Tensor: vector of variances is used, with zero covariance.
+            - 2D-Tensor: covariance matrix is used.
         """
         L = self._cholesky_factor_l()
         return L @ L.t()
@@ -478,28 +562,62 @@ class MultivariateGaussianNode(AbstractGaussianNode):
     @torch.no_grad()
     def covariance(self, value: float | torch.Tensor) -> None:
         if not isinstance(value, torch.Tensor):
-            assert value > 0
+            if not value > 0:
+                raise ValueError("variance must be positive")
+
             self.covar_cf_logdiag.fill_(math.log(math.sqrt(value)))
             self.covar_cf_offtril.fill_(0.0)
+
         else:
             match value.ndim:
+                # scalar (isotropic multivariate)
                 case 0:
-                    assert value > 0
+                    if not value > 0:
+                        raise ValueError("variance must be positive")
+
                     self.covar_cf_logdiag.fill_(value.sqrt().log())
                     self.covar_cf_offtril.fill_(0.0)
+
+                # vector (factorized multivariate)
                 case 1:
-                    assert value.numel() == self.size
-                    assert torch.all(value > 0)
+                    if not all(sz == self.size for sz in value.shape):
+                        raise ValueError(
+                            "`covariance` must be specified as a scalar, a vector of "
+                            f"{self.size}, or a {self.size} x {self.size} matrix"
+                        )
+                    if not torch.all(value > 0):
+                        raise ValueError(
+                            "all elements of the variance vector must be positive"
+                        )
+
                     self.covar_cf_logdiag.copy_(value.sqrt().log())
                     self.covar_cf_offtril.fill_(0.0)
+
+                # matrix (full multivariate)
                 case 2:
-                    assert all(sz == self.size for sz in value.shape)
+                    if not all(sz == self.size for sz in value.shape):
+                        raise ValueError(
+                            "`covariance` must be specified as a scalar, a vector of "
+                            f"{self.size}, or a {self.size} x {self.size} matrix"
+                        )
+
                     L, info = torch.linalg.cholesky_ex(value)
-                    assert info.item() == 0
+
+                    if not info.item() == 0:
+                        raise ValueError(
+                            "the covariance matrix must be "
+                            "symmetric and positive-definite"
+                        )
+
                     self.covar_cf_logdiag.copy_(L.diag().log())
                     self.covar_cf_offtril.copy_(L).fill_diagonal_(0.0)
+
+                # invalid tensor dimensionality
                 case _:
-                    assert value.ndim <= 2
+                    raise ValueError(
+                        "`covariance` must be specified as a scalar, a vector of "
+                        f"{self.size}, or a {self.size} x {self.size} matrix"
+                    )
 
     def error(self, pred: torch.Tensor) -> torch.Tensor:
         r"""Error between the prediction and node state.

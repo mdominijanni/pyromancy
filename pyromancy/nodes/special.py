@@ -99,8 +99,11 @@ class FixedNode(Node):
         Raises:
             RuntimeError: shape of ``value`` is incompatible with the node.
         """
-
-        assert self.shapeobj.compat(*value.shape)
+        if not self.shapeobj.compat(*value.shape):
+            raise ValueError(
+                f"shape of `value` {(*value.shape,)} is incompatible "
+                f"with node shape {(*self.shapeobj,)}"
+            )
 
         self.value.data = self.value.data.new_empty(*value.shape)
         self.value.copy_(value)
@@ -185,8 +188,11 @@ class FloatingNode(Node):
         Raises:
             RuntimeError: shape of ``value`` is incompatible with the node.
         """
-
-        assert self.shapeobj.compat(*value.shape)
+        if not self.shapeobj.compat(*value.shape):
+            raise ValueError(
+                f"shape of `value` {(*value.shape,)} is incompatible "
+                f"with node shape {(*self.shapeobj,)}"
+            )
 
         self.value.data = self.value.data.new_empty(*value.shape)
         self.value.copy_(value)

@@ -14,7 +14,7 @@ authors = [
   { name = "Marissa Dominijanni", email = "mdomini@buffalo.edu" },
 ]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 3 - Alpha",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
