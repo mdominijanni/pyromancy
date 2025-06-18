@@ -110,7 +110,7 @@ class Shape:
         for n, d in enumerate(self._virtual_dims):
             shape[d] = fill[n]
 
-        return tuple(shape)
+        return tuple(shape)  # type: ignore
 
     def coalesce(self, tensor: torch.Tensor) -> tuple[torch.Tensor, dict[str, int]]:
         r"""Coalesces a tensor into a matrix, with placeholder dimensions first and fixed dimensions second.

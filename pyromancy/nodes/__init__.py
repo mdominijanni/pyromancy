@@ -6,7 +6,7 @@ from .gaussian import (
     FactorizedGaussianNode,
     MultivariateGaussianNode,
 )
-from .special import BiasNode, FixedNode
+from .special import BiasNode, FixedNode, FloatingNode
 
 
 __all__ = [
@@ -20,4 +20,5 @@ __all__ = [
     "MultivariateGaussianNode",
     "BiasNode",
     "FixedNode",
+    "FloatingNode",
 ]

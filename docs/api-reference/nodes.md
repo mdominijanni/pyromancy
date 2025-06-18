@@ -39,4 +39,5 @@
 
     BiasNode
     FixedNode
+    FloatingNode
 ```
