@@ -61,6 +61,9 @@ class FixedNode(Node):
     This is primarily useful for when it is helpful to have a dummy input node, but when
     its value should not be updated during E-steps (e.g. when using query by conditioning).
 
+    Unlike using a :py:class:`~pyromancy.nodes.PredictiveNode`, this cannot be used for
+    reverse inference.
+
     Args:
         *shape (int | None): base shape of the node's state.
 
