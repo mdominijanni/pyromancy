@@ -25,7 +25,7 @@ class AbstractGaussianNode(VariationalNode, ABC):
         *shape (int | None): shape of the node's learned state.
 
     Attributes:
-        value (nn.Parameter): current value of the node.
+        value (~torch.nn.parameter.Parameter): current value of the node.
     """
 
     def __init__(self, *shape: int | None) -> None:
@@ -37,13 +37,13 @@ class AbstractGaussianNode(VariationalNode, ABC):
         r"""Covariance matrix of the Gaussian distribution.
 
         Args:
-            value (float | torch.Tensor): new covariance for the distribution.
+            value (float | ~torch.Tensor): new covariance for the distribution.
 
         Raises:
             NotImplementedError: must be implemented by subclasses.
 
         Returns:
-            torch.Tensor: covariance of the distribution.
+            ~torch.Tensor: covariance of the distribution.
         """
         raise NotImplementedError
 
@@ -65,7 +65,7 @@ class StandardGaussianNode(AbstractGaussianNode):
         *shape (int | None): shape of the node's learned state.
 
     Attributes:
-        value (nn.Parameter): value of the node :math:`\mathbf{z}`.
+        value (~torch.nn.parameter.Parameter): value of the node :math:`\mathbf{z}`.
     """
 
     def __init__(self, *shape: int | None) -> None:
@@ -79,13 +79,13 @@ class StandardGaussianNode(AbstractGaussianNode):
             \boldsymbol{\Sigma} = \mathbf{I}
 
         Args:
-            value (float | torch.Tensor): new covariance for the distribution.
+            value (float | ~torch.Tensor): new covariance for the distribution.
 
         Raises:
             RuntimeError: covariance is a fixed value.
 
         Returns:
-            torch.Tensor: covariance of the distribution.
+            ~torch.Tensor: covariance of the distribution.
         """
         return torch.eye(self.size, dtype=self.value.dtype, device=self.value.device)
 
@@ -100,10 +100,10 @@ class StandardGaussianNode(AbstractGaussianNode):
             \boldsymbol{\varepsilon} = \mathbf{z} - \boldsymbol{\mu}
 
         Args:
-            pred (torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
+            pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
-            torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
+            ~torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
         """
         return self.value - pred
 
@@ -119,10 +119,10 @@ class StandardGaussianNode(AbstractGaussianNode):
             \end{aligned}
 
         Args:
-            pred (torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
+            pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
-            torch.Tensor: variational free energy :math:`F`.
+            ~torch.Tensor: variational free energy :math:`F`.
         """
         diff = (self.value - pred).flatten(1)
         return 0.5 * (diff.unsqueeze(1) @ diff.unsqueeze(2)).flatten()
@@ -133,13 +133,13 @@ class StandardGaussianNode(AbstractGaussianNode):
         r"""Samples from the learned variational distribution.
 
         Args:
-            value (torch.Tensor): location parameter of the variational distribution
+            value (~torch.Tensor): location parameter of the variational distribution
                 for sampling.
-            generator (torch.Generator | None, optional): pseudorandom number generator
+            generator (~torch.Generator | None, optional): pseudorandom number generator
                 for sampling. Defaults to None.
 
         Returns:
-            torch.Tensor: samples from the variational distribution.
+            ~torch.Tensor: samples from the variational distribution.
         """
         mu, pragma = self.shapeobj.coalesce(value)
         x = torch.randn(mu.shape, generator=generator, out=torch.empty_like(mu))
@@ -160,8 +160,8 @@ class IsotropicGaussianNode(AbstractGaussianNode):
         variance (float, optional): initial variance. Defaults to 1.0.
 
     Attributes:
-        value (nn.Parameter): value of the node :math:`\mathbf{z}`.
-        logvar (nn.Parameter): log of the distribution variance :math:`\log{\sigma}`.
+        value (~torch.nn.parameter.Parameter): value of the node :math:`\mathbf{z}`.
+        logvar (~torch.nn.parameter.Parameter): log of the distribution variance :math:`\log{\sigma}`.
     """
 
     logvar: nn.Parameter
@@ -182,10 +182,10 @@ class IsotropicGaussianNode(AbstractGaussianNode):
             \boldsymbol{\Sigma} = \sigma\mathbf{I}
 
         Args:
-            value (float | torch.Tensor): new covariance for the distribution.
+            value (float | ~torch.Tensor): new covariance for the distribution.
 
         Returns:
-            torch.Tensor: covariance of the distribution.
+            ~torch.Tensor: covariance of the distribution.
         """
         return self.logvar.exp() * torch.eye(
             self.size, dtype=self.logvar.dtype, device=self.logvar.device
@@ -221,10 +221,10 @@ class IsotropicGaussianNode(AbstractGaussianNode):
             \boldsymbol{\varepsilon} = \frac{\mathbf{z} - \boldsymbol{\mu}}{\sigma}
 
         Args:
-            pred (torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
+            pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
-            torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
+            ~torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
         """
         return (self.value - pred) / self.logvar.exp()
 
@@ -242,10 +242,10 @@ class IsotropicGaussianNode(AbstractGaussianNode):
             \end{aligned}
 
         Args:
-            pred (torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
+            pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
-            torch.Tensor: variational free energy :math:`F`.
+            ~torch.Tensor: variational free energy :math:`F`.
         """
         diff = (self.value - pred).flatten(1)
         y = diff / self.logvar.exp()
@@ -258,13 +258,13 @@ class IsotropicGaussianNode(AbstractGaussianNode):
         r"""Samples from the learned variational distribution.
 
         Args:
-            value (torch.Tensor): location parameter of the variational distribution
+            value (~torch.Tensor): location parameter of the variational distribution
                 for sampling.
-            generator (torch.Generator | None, optional): pseudorandom number generator
+            generator (~torch.Generator | None, optional): pseudorandom number generator
                 for sampling. Defaults to None.
 
         Returns:
-            torch.Tensor: samples from the variational distribution.
+            ~torch.Tensor: samples from the variational distribution.
         """
         mu, pragma = self.shapeobj.coalesce(value)
         std = self.logvar.exp().sqrt()
@@ -292,8 +292,8 @@ class FactorizedGaussianNode(AbstractGaussianNode):
         variance (float, optional): initial variance. Defaults to 1.0.
 
     Attributes:
-        value (nn.Parameter): value of the node :math:`\mathbf{z}`.
-        logvar (nn.Parameter): log of the distribution variances :math:`\log{\boldsymbol{\sigma}}`.
+        value (~torch.nn.parameter.Parameter): value of the node :math:`\mathbf{z}`.
+        logvar (~torch.nn.parameter.Parameter): log of the distribution variances :math:`\log{\boldsymbol{\sigma}}`.
     """
 
     logvar: nn.Parameter
@@ -315,10 +315,10 @@ class FactorizedGaussianNode(AbstractGaussianNode):
             \operatorname{diag}(\sigma_1, \sigma_2, \ldots, \sigma_N)
 
         Args:
-            value (float | torch.Tensor): new covariance for the distribution.
+            value (float | ~torch.Tensor): new covariance for the distribution.
 
         Returns:
-            torch.Tensor: covariance of the distribution.
+            ~torch.Tensor: covariance of the distribution.
         """
         return torch.diag(self.logvar.exp())
 
@@ -353,10 +353,10 @@ class FactorizedGaussianNode(AbstractGaussianNode):
             (\mathbf{z} - \boldsymbol{\mu}) \oslash \boldsymbol{\sigma}
 
         Args:
-            pred (torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
+            pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
-            torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
+            ~torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
         """
         diff, pragma = self.shapeobj.coalesce(self.value - pred)
         return self.shapeobj.disperse(diff / self.logvar.exp(), pragma)
@@ -371,10 +371,10 @@ class FactorizedGaussianNode(AbstractGaussianNode):
             + N \log \sigma\right)
 
         Args:
-            pred (torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
+            pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
-            torch.Tensor: variational free energy :math:`F`.
+            ~torch.Tensor: variational free energy :math:`F`.
         """
         diff, pragma = self.shapeobj.coalesce(self.value - pred)
         y = diff / self.logvar.exp()
@@ -391,13 +391,13 @@ class FactorizedGaussianNode(AbstractGaussianNode):
         r"""Samples from the learned variational distribution.
 
         Args:
-            value (torch.Tensor): location parameter of the variational distribution
+            value (~torch.Tensor): location parameter of the variational distribution
                 for sampling.
-            generator (torch.Generator | None, optional): pseudorandom number generator
+            generator (~torch.Generator | None, optional): pseudorandom number generator
                 for sampling. Defaults to None.
 
         Returns:
-            torch.Tensor: samples from the variational distribution.
+            ~torch.Tensor: samples from the variational distribution.
         """
         mu, pragma = self.shapeobj.coalesce(value)
         std = self.logvar.exp().sqrt()
@@ -423,11 +423,11 @@ class MultivariateGaussianNode(AbstractGaussianNode):
         variance (float, optional): initial variance. Defaults to 1.0.
 
     Attributes:
-        value (nn.Parameter): value of the node :math:`\mathbf{z}`.
-        covar_cf_logdiag (nn.Parameter): log of the diagonal of the Cholesky factor for
-            the distribution covariance.
-        covar_cf_offtril (nn.Parameter): Cholesky factor for the distribution covariances,
-            with the diagonal zeroed.
+        value (~torch.nn.parameter.Parameter): value of the node :math:`\mathbf{z}`.
+        covar_cf_logdiag (~torch.nn.parameter.Parameter): log of the diagonal of the
+            Cholesky factor for the distribution covariance.
+        covar_cf_offtril (~torch.nn.parameter.Parameter): Cholesky factor for the
+            distribution covariances, with the diagonal zeroed.
     """
 
     covar_cf_logdiag: nn.Parameter
@@ -448,7 +448,7 @@ class MultivariateGaussianNode(AbstractGaussianNode):
         r"""Computes the Cholesky decomposition factor :math:`L` of the covariance matrix.
 
         Returns:
-            torch.Tensor: Cholesky factor :math:`L`.
+            ~torch.Tensor: Cholesky factor :math:`L`.
         """
         return self.covar_cf_offtril.tril(-1) + self.covar_cf_logdiag.exp().diag()
 
@@ -466,10 +466,10 @@ class MultivariateGaussianNode(AbstractGaussianNode):
             \end{bmatrix}
 
         Args:
-            value (float | torch.Tensor): new covariance for the distribution.
+            value (float | ~torch.Tensor): new covariance for the distribution.
 
         Returns:
-            torch.Tensor: covariance of the distribution.
+            ~torch.Tensor: covariance of the distribution.
         """
         L = self._cholesky_factor_l()
         return L @ L.t()
@@ -508,10 +508,10 @@ class MultivariateGaussianNode(AbstractGaussianNode):
             \boldsymbol{\varepsilon} = \boldsymbol{\Sigma}^{-1} (\mathbf{z} - \boldsymbol{\mu})^\intercal
 
         Args:
-            pred (torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
+            pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
-            torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
+            ~torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
         """
         diff, pragma = self.shapeobj.coalesce(self.value - pred)
         L = self._cholesky_factor_l()
@@ -531,10 +531,10 @@ class MultivariateGaussianNode(AbstractGaussianNode):
             + \log \lvert\boldsymbol{\Sigma}\rvert \right)
 
         Args:
-            pred (torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
+            pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
-            torch.Tensor: variational free energy :math:`F`.
+            ~torch.Tensor: variational free energy :math:`F`.
         """
         diff, pragma = self.shapeobj.coalesce(self.value - pred)
         L = self._cholesky_factor_l()
@@ -554,13 +554,13 @@ class MultivariateGaussianNode(AbstractGaussianNode):
         r"""Samples from the learned variational distribution.
 
         Args:
-            value (torch.Tensor): location parameter of the variational distribution
+            value (~torch.Tensor): location parameter of the variational distribution
                 for sampling.
             generator (torch.Generator | None, optional): pseudorandom number generator
                 for sampling. Defaults to None.
 
         Returns:
-            torch.Tensor: samples from the variational distribution.
+            ~torch.Tensor: samples from the variational distribution.
         """
         L = self._cholesky_factor_l()
         mu, pragma = self.shapeobj.coalesce(value)

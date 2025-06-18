@@ -1,6 +1,7 @@
 import einops as ein
 import math
 import torch
+from typing import Iterator, overload
 
 
 class Shape:
@@ -14,6 +15,7 @@ class Shape:
         Scalar tensors (i.e. tensors with no dimensions) are unsupported, as are tensors
         with any dimension of size 0.
     """
+
     _rawshape: tuple[int | None, ...]
     _concrete_dims: tuple[int, ...]
     _virtual_dims: tuple[int, ...]
@@ -27,7 +29,9 @@ class Shape:
         assert all(s > 0 for s in shape if s is not None)
 
         self._rawshape = tuple(int(s) if s is not None else None for s in shape)
-        self._concrete_dims = tuple(d for d, s in enumerate(self._rawshape) if s is not None)
+        self._concrete_dims = tuple(
+            d for d, s in enumerate(self._rawshape) if s is not None
+        )
         self._virtual_dims = tuple(d for d, s in enumerate(self._rawshape) if s is None)
 
         dims = tuple(f"d{d}" for d in range(len(self._rawshape)))
@@ -44,6 +48,21 @@ class Shape:
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({", ".join(str(d) for d in self._rawshape)})"
+
+    @overload
+    def __getitem__(self, index: int) -> int | None: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> tuple[int | None, ...]: ...
+
+    def __getitem__(self, index: int | slice) -> int | None | tuple[int | None, ...]:
+        return self._rawshape[index]
+
+    def __len__(self) -> int:
+        return len(self._rawshape)
+
+    def __iter__(self) -> Iterator[int | None]:
+        return iter(self._rawshape)
 
     @property
     def rawshape(self) -> tuple[int | None, ...]:
@@ -93,9 +112,7 @@ class Shape:
 
         return tuple(shape)
 
-    def coalesce(
-        self, tensor: torch.Tensor
-    ) -> tuple[torch.Tensor, dict[str, int]]:
+    def coalesce(self, tensor: torch.Tensor) -> tuple[torch.Tensor, dict[str, int]]:
         r"""Coalesces a tensor into a matrix, with placeholder dimensions first and fixed dimensions second.
 
         For a tensor with :math:`V_1, \ldots, V_m` placeholder dimensions and
@@ -104,25 +121,23 @@ class Shape:
         dimensions of unit length will used if the tensor has no placeholder/fixed dimensions.
 
         Args:
-            tensor (torch.Tensor): tensor to coalesce.
+            tensor (~torch.Tensor): tensor to coalesce.
 
         Returns:
-            tuple[torch.Tensor, dict[str, int]]: tuple of the coalesced tensor and the
+            tuple[~torch.Tensor, dict[str, int]]: tuple of the coalesced tensor and the
                 required shape information to revert it.
         """
         pragma = ein.parse_shape(tensor, self._parseshp_str)
         return ein.rearrange(tensor, self._coalesce_str), pragma
 
-    def disperse(
-        self, tensor: torch.Tensor, pragma: dict[str, int]
-    ) -> torch.Tensor:
+    def disperse(self, tensor: torch.Tensor, pragma: dict[str, int]) -> torch.Tensor:
         r"""Disperses dimensions of a coalesced tensor to their original positions.
 
         Args:
-            tensor (torch.Tensor): tensor to disperse.
+            tensor (~torch.Tensor): tensor to disperse.
             pragma (dict[str, int]): shape information to revert the tensor.
 
         Returns:
-            torch.Tensor: dispersed tensor.
+            ~torch.Tensor: dispersed tensor.
         """
         return ein.rearrange(tensor, self._disperse_str, **pragma)

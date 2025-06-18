@@ -5,6 +5,7 @@
 ```
 
 ## Base Classes
+
 ```{eval-rst}
 .. autosummary::
     :nosignatures:
@@ -16,6 +17,7 @@
 ```
 
 ## Gaussian Nodes
+
 ```{eval-rst}
 .. autosummary::
     :nosignatures:
@@ -29,6 +31,7 @@
 ```
 
 ## Special Nodes
+
 ```{eval-rst}
 .. autosummary::
     :nosignatures:
@@ -36,17 +39,4 @@
 
     BiasNode
     FixedNode
-```
-
-## Variant Nodes
-
-Nodes that have the same functionality as the "standard" nodes, but with alternative
-implementations.
-
-```{eval-rst}
-.. autosummary::
-    :nosignatures:
-    :toctree: generated
-
-    LDLMultivariateGaussianNode
 ```

@@ -88,7 +88,7 @@ class PredictiveNode(Node, ABC):
         *shape (int | None): base shape of the node's state.
 
     Attributes:
-        value (nn.Parameter): current value of the node.
+        value (~torch.nn.parameter.Parameter): current value of the node.
     """
 
     value: nn.Parameter
@@ -113,10 +113,10 @@ class PredictiveNode(Node, ABC):
         r"""Initializes the node's state to a new value.
 
         Args:
-            value (torch.Tensor): value to initialize to.
+            value (~torch.Tensor): value to initialize to.
 
         Returns:
-            nn.Parameter: the reinitialized value.
+            ~torch.nn.parameter.Parameter: the reinitialized value.
 
         Raises:
             RuntimeError: shape of ``value`` is incompatible with the node.
@@ -134,13 +134,13 @@ class PredictiveNode(Node, ABC):
         r"""Computes elementwise error for a prediction of the node state.
 
         Args:
-            pred (torch.Tensor): prediction of the node state.
+            pred (~torch.Tensor): prediction of the node state.
 
         Raises:
             NotImplementedError: must be implemented by subclasses.
 
         Returns:
-            torch.Tensor: elementwise error between the state and a prediction.
+            ~torch.Tensor: elementwise error between the state and a prediction.
         """
         raise NotImplementedError
 
@@ -149,13 +149,13 @@ class PredictiveNode(Node, ABC):
         r"""Computes variational free energy for a prediction of the node state.
 
         Args:
-            pred (torch.Tensor): prediction of the node state.
+            pred (~torch.Tensor): prediction of the node state.
 
         Raises:
             NotImplementedError: must be implemented by subclasses.
 
         Returns:
-            torch.Tensor: variational free energy between the state and a prediction.
+            ~torch.Tensor: variational free energy between the state and a prediction.
         """
         raise NotImplementedError
 
@@ -167,10 +167,10 @@ class PredictiveNode(Node, ABC):
         returned (i.e. this acts as the identity operation).
 
         Args:
-            inputs (torch.Tensor): prediction of the value.
+            inputs (~torch.Tensor): prediction of the value.
 
         Returns:
-            torch.Tensor: value of the node.
+            ~torch.Tensor: value of the node.
         """
         if self.training:
             return self.init(inputs)
@@ -195,15 +195,15 @@ class VariationalNode(PredictiveNode, ABC):
         r"""Samples from the learned variational distribution.
 
         Args:
-            value (torch.Tensor): location parameter of the variational distribution
+            value (~torch.Tensor): location parameter of the variational distribution
                 for sampling.
-            generator (torch.Generator | None, optional): pseudorandom number generator
+            generator (~torch.Generator | None, optional): pseudorandom number generator
                 for sampling. Defaults to None.
 
         Raises:
             NotImplementedError: must be implemented by subclasses.
 
         Returns:
-            torch.Tensor: samples from the variational distribution.
+            ~torch.Tensor: samples from the variational distribution.
         """
         raise NotImplementedError

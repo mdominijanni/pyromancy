@@ -12,7 +12,7 @@ class BiasNode(Node):
         *shape (int | None): shape of the learned bias.
 
     Attributes:
-        bias (nn.Parameter): learned bias :math:`\mathbf{b}`.
+        bias (~torch.nn.parameter.Parameter): learned bias :math:`\mathbf{b}`.
     """
 
     bias: nn.Parameter
@@ -35,10 +35,10 @@ class BiasNode(Node):
             \boldsymbol{\varepsilon} = \mathbf{b} - \boldsymbol{\mu}
 
         Args:
-            pred (torch.Tensor): predicted bias :math:`\boldsymbol{\mu}`.
+            pred (~torch.Tensor): predicted bias :math:`\boldsymbol{\mu}`.
 
         Returns:
-            torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
+            ~torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
         """
         return self.bias - pred
 
@@ -50,7 +50,7 @@ class BiasNode(Node):
             *fill (int): additional sizes to fill placeholder dimensions.
 
         Returns:
-            torch.Tensor: expanded bias tensor.
+            ~torch.Tensor: expanded bias tensor.
         """
         return self.bias.unsqueeze(0).expand(self.shapeobj.filled(batch_size, *fill))
 
@@ -68,7 +68,7 @@ class FixedNode(Node):
         *shape (int | None): base shape of the node's state.
 
     Attributes:
-        value (nn.Buffer): current value of the node.
+        value (~torch.nn.parameter.Buffer): current value of the node.
     """
 
     value: nn.Buffer
@@ -93,10 +93,10 @@ class FixedNode(Node):
         r"""Initializes the node's state to a new value.
 
         Args:
-            value (torch.Tensor): value to initialize to.
+            value (~torch.Tensor): value to initialize to.
 
         Returns:
-            nn.Buffer: the reinitialized value.
+            ~torch.nn.parameter.Buffer: the reinitialized value.
 
         Raises:
             RuntimeError: shape of ``value`` is incompatible with the node.
@@ -116,10 +116,10 @@ class FixedNode(Node):
             \boldsymbol{\varepsilon} = \mathbf{z} - \boldsymbol{\mu}
 
         Args:
-            pred (torch.Tensor): predicted value :math:`\boldsymbol{\mu}`.
+            pred (~torch.Tensor): predicted value :math:`\boldsymbol{\mu}`.
 
         Returns:
-            torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
+            ~torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
         """
         return self.value - pred
 
@@ -131,10 +131,10 @@ class FixedNode(Node):
         returned (i.e. this acts as the identity operation).
 
         Args:
-            inputs (torch.Tensor): prediction of the value.
+            inputs (~torch.Tensor): prediction of the value.
 
         Returns:
-            torch.Tensor: value of the node.
+            ~torch.Tensor: value of the node.
         """
         if self.training:
             return self.init(inputs)

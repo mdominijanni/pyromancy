@@ -7,7 +7,6 @@ from .gaussian import (
     MultivariateGaussianNode,
 )
 from .special import BiasNode, FixedNode
-from .variant import LDLMultivariateGaussianNode
 
 
 __all__ = [
@@ -21,5 +20,4 @@ __all__ = [
     "MultivariateGaussianNode",
     "BiasNode",
     "FixedNode",
-    "LDLMultivariateGaussianNode",
 ]
