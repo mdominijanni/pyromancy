@@ -2,7 +2,7 @@ import pytest
 import torch
 import torch.nn as nn
 
-from pyromancy import get_named_estep_params
+from pyromancy import eparameters, mparameters, get_named_estep_params
 
 
 class UnspecifiedEM(nn.Module):
@@ -12,8 +12,8 @@ class UnspecifiedEM(nn.Module):
         self.p2 = nn.Parameter(torch.rand(()), False)
 
 
+@eparameters("e1", "e2")
 class SpecifiedE(nn.Module):
-    _e_params_ = ["e1", "e2"]
 
     def __init__(self) -> None:
         nn.Module.__init__(self)
@@ -23,8 +23,8 @@ class SpecifiedE(nn.Module):
         self.p2 = nn.Parameter(torch.rand(()), False)
 
 
+@mparameters("m1", "m2")
 class SpecifiedM(nn.Module):
-    _m_params_ = ["m1", "m2"]
 
     def __init__(self) -> None:
         nn.Module.__init__(self)
@@ -34,6 +34,8 @@ class SpecifiedM(nn.Module):
         self.p2 = nn.Parameter(torch.rand(()), False)
 
 
+@eparameters("e1", "e2")
+@mparameters("m1", "m2")
 class SpecifiedEM(nn.Module):
     _e_params_ = ["e1", "e2"]
     _m_params_ = ["m1", "m2"]

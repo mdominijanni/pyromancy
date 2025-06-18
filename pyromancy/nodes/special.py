@@ -59,20 +59,20 @@ class FixedNode(Node):
     r"""Fixed value input node.
 
     This is primarily useful for when it is helpful to have a dummy input node, but when
-    its value should not be updated during E-steps (e.g. when using query by initialization).
+    its value should not be updated during E-steps (e.g. when using query by conditioning).
 
     Args:
         *shape (int | None): base shape of the node's state.
 
     Attributes:
-        value (nn.Parameter): current value of the node.
+        value (nn.Buffer): current value of the node.
     """
 
-    value: nn.Parameter
+    value: nn.Buffer
 
     def __init__(self, *shape: int | None) -> None:
         Node.__init__(self, *shape)
-        self.value = nn.Parameter(torch.empty(0), True)
+        self.value = nn.Buffer(torch.empty(0), False)
 
     @torch.no_grad()
     def reset(self) -> None:
@@ -86,14 +86,14 @@ class FixedNode(Node):
         self.value.data = self.value.new_empty(0)
 
     @torch.no_grad()
-    def init(self, value: torch.Tensor) -> nn.Parameter:
+    def init(self, value: torch.Tensor) -> nn.Buffer:
         r"""Initializes the node's state to a new value.
 
         Args:
             value (torch.Tensor): value to initialize to.
 
         Returns:
-            nn.Parameter: the reinitialized parameter.
+            nn.Buffer: the reinitialized value.
 
         Raises:
             RuntimeError: shape of ``value`` is incompatible with the node.

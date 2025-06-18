@@ -2,9 +2,11 @@ from abc import ABC, abstractmethod
 import torch
 import torch.nn as nn
 from ..infra import Shape
-from ..utils import eparameters
+from ..utils import eparameters, mparameters
 
 
+@eparameters()
+@mparameters()
 class Node(nn.Module, ABC):
     r"""Base class for predictive coding nodes.
 
@@ -114,7 +116,7 @@ class PredictiveNode(Node, ABC):
             value (torch.Tensor): value to initialize to.
 
         Returns:
-            nn.Parameter: the reinitialized parameter.
+            nn.Parameter: the reinitialized value.
 
         Raises:
             RuntimeError: shape of ``value`` is incompatible with the node.
@@ -183,13 +185,13 @@ class VariationalNode(PredictiveNode, ABC):
         *shape (int | None): base shape of the node's state.
     """
 
-    value: nn.Parameter
-
     def __init__(self, *shape: int | None) -> None:
-        Node.__init__(self, *shape)
+        PredictiveNode.__init__(self, *shape)
 
     @abstractmethod
-    def sample(self, value: torch.Tensor, generator: torch.Generator | None = None) -> torch.Tensor:
+    def sample(
+        self, value: torch.Tensor, generator: torch.Generator | None = None
+    ) -> torch.Tensor:
         r"""Samples from the learned variational distribution.
 
         Args:

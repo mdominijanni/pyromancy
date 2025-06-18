@@ -17,9 +17,9 @@ def eparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
         assert all(isinstance(f, str) for f in fields)
 
         if "_e_params_" not in cls.__dict__:
-            params = {*fields}
+            params = {f: None for f in fields}
             for c in cls.__mro__:
-                params |= {*c.__dict__.get("_e_params_", ())}
+                params |= c.__dict__.get("_e_params_", {})
             cls._e_params_ = params
             cls.__annotations__["_e_params_"] = set[str]
 
@@ -40,9 +40,9 @@ def mparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
         assert all(isinstance(f, str) for f in fields)
 
         if "_m_params_" not in cls.__dict__:
-            params = {*fields}
+            params = {f: None for f in fields}
             for c in cls.__mro__:
-                params |= {*c.__dict__.get("_m_params_", ())}
+                params |= c.__dict__.get("_m_params_", {})
             cls._m_params_ = params
             cls.__annotations__["_m_params_"] = set[str]
 
@@ -175,8 +175,8 @@ def get_estep_params(
 
     Note:
         The E-step parameters for a class that inherits from :py:class:`~torch.nn.Module`
-        are determined by the class attribute ``_e_params_``, containing a list of
-        attribute names.
+        are determined by the class attribute ``_e_params_``, containing a dictionary of
+        attribute names with ``None`` values.
     """
     for _, p in get_named_estep_params(
         module, default, exclude, recurse=recurse, remove_duplicate=True
@@ -222,8 +222,8 @@ def get_named_mstep_params(
 
     Note:
         The M-step parameters for a class that inherits from :py:class:`~torch.nn.Module`
-        are determined by the class attribute ``_m_params_``, containing a list of
-        attribute names.
+        are determined by the class attribute ``_m_params_``, containing a dictionary of
+        attribute names with ``None`` values.
     """
     if exclude is None:
         exclude = ()
