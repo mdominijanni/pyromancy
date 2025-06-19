@@ -4,11 +4,11 @@ import torch.nn as nn
 
 from pyromancy import (
     eparameters,
-    mparameters,
-    get_named_estep_params,
     get_estep_params,
-    get_named_mstep_params,
     get_mstep_params,
+    get_named_estep_params,
+    get_named_mstep_params,
+    mparameters,
 )
 
 

@@ -1,13 +1,12 @@
 from .base import Node, PredictiveNode, VariationalNode
 from .gaussian import (
     AbstractGaussianNode,
-    StandardGaussianNode,
-    IsotropicGaussianNode,
     FactorizedGaussianNode,
+    IsotropicGaussianNode,
     MultivariateGaussianNode,
+    StandardGaussianNode,
 )
 from .special import BiasNode, FixedNode, FloatingNode
-
 
 __all__ = [
     "Node",

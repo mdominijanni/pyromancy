@@ -1,7 +1,8 @@
-import einops as ein
 import math
-import torch
 from typing import Iterator, overload
+
+import einops as ein
+import torch
 
 
 class Shape:

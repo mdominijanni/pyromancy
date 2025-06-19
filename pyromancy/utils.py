@@ -1,6 +1,6 @@
-import torch.nn as nn
 from typing import Any, Callable, Iterator, Sequence, Type, TypeVar
 
+import torch.nn as nn
 
 T = TypeVar("T")
 

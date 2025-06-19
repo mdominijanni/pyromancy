@@ -1,9 +1,11 @@
-from abc import ABC, abstractmethod
 import math
+from abc import ABC, abstractmethod
+
 import torch
 import torch.nn as nn
-from .base import VariationalNode
+
 from ..utils import mparameters
+from .base import VariationalNode
 
 
 class AbstractGaussianNode(VariationalNode, ABC):

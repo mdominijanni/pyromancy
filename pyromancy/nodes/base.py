@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
+
 import torch
 import torch.nn as nn
+
 from ..infra import Shape
 from ..utils import eparameters, mparameters
 
