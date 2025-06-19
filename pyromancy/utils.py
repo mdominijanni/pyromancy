@@ -15,7 +15,7 @@ def _get_declared_estep_params(cls: type, /, *default: Any) -> dict[str, None] |
     Returns:
         dict[str, None] | None: E-step parameters names if any are declared, otherwise ``None``.
     """
-    params = {}
+    params: dict[str, None] = {}
 
     for c in cls.__mro__:
         params |= c.__dict__.get("_e_params_", {})
@@ -36,7 +36,7 @@ def _get_declared_mstep_params(cls: type, /, *default: Any) -> dict[str, None] |
     Returns:
         dict[str, None] | None: M-step parameters names if any are declared, otherwise ``None``.
     """
-    params = {}
+    params: dict[str, None] = {}
 
     for c in cls.__mro__:
         params |= c.__dict__.get("_m_params_", {})

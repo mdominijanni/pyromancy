@@ -45,6 +45,7 @@ flake8>=7.1.2
 flake8-bugbear>=24.12.12
 pytest>=8.3.4
 pytest-cov>=6.0.0
+mypy>=1.16.1
 
 # documentation
 sphinx>=8.2.3

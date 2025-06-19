@@ -3,16 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pyromancy"
+name = "pyromancy-ai"
 dynamic = ["version"]
-description = ''
+description = "A Compact Library for Predictive Coding with PyTorch"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "BSD-3-Clause"
 keywords = []
-authors = [
-  { name = "Marissa Dominijanni", email = "mdomini@buffalo.edu" },
-]
+authors = [{ name = "Marissa Dominijanni", email = "mdomini@buffalo.edu" }]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Programming Language :: Python",
@@ -22,18 +20,59 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = []
+dependencies = ["einops>=0.7"]
 
 [project.urls]
 Source = "https://github.com/mdominijanni/pyromancy"
 
+[project.optional-dependencies]
+torch = ["torch>=2.6.0", "torchvision>=0.21.0", "torchaudio>=2.6.0"]
+
 [tool.hatch.version]
 path = "pyromancy/__about__.py"
 
-[tool.hatch.envs.types]
+[tool.hatch.envs.docs]
 extra-dependencies = [
-  "mypy>=1.0.0",
+  "torch>=2.6.0",
+  "numpy>=2.1.3",
+  "sphinx>=8.2.3",
+  "mystmd>=1.3.28",
+  "docutils>=0.21.2",
+  "esbonio>=0.16.5",
+  "myst-parser>=4.0.1",
+  "sphinx-design>=0.6.1",
+  "sphinx-remove-toctrees>=1.0.0",
+  "furo>=2024.8.6",
 ]
+[tool.hatch.envs.docs.scripts]
+build = "sphinx-build -b html docs docs/_build/html"
+
+[tool.hatch.envs.style]
+detached = true
+dependencies = ["torch>=2.6.0", "numpy>=2.1.3", "flake8", "black", "isort"]
+[tool.hatch.envs.style.scripts]
+check = [
+  "flake8 .",
+  "black --check --diff ./pyromancy",
+  "isort --check-only --diff ./pyromancy",
+]
+fmt = ["isort ./pyromancy", "black ./pyromancy", "check"]
+
+[tool.hatch.envs.test]
+extra-dependencies = [
+  "torch>=2.6.0",
+  "numpy>=2.1.3",
+  "coverage[toml]",
+  "pytest>=8.3.4",
+  "pytest-cov>=6.0.0",
+  "pytest-mock",
+]
+[tool.hatch.envs.test.scripts]
+run-coverage = "pytest --cov-config=pyproject.toml --cov=pkg --cov=tests"
+run = "run-coverage --no-cov"
+
+[tool.hatch.envs.types]
+extra-dependencies = ["torch>=2.6.0", "numpy>=2.1.3", "mypy>=1.16.1"]
 [tool.hatch.envs.types.scripts]
 check = "mypy --install-types --non-interactive {args:pyromancy test}"
 
@@ -50,17 +89,11 @@ only-include = ["pyromancy"]
 source_pkgs = ["pyromancy", "test"]
 branch = true
 parallel = true
-omit = [
-  "pyromancy/__about__.py",
-]
+omit = ["pyromancy/__about__.py"]
 
 [tool.coverage.paths]
 pyromancy = ["pyromancy", "*/pyromancy/pyromancy"]
 tests = ["test", "*/test"]
 
 [tool.coverage.report]
-exclude_lines = [
-  "no cov",
-  "if __name__ == .__main__.:",
-  "if TYPE_CHECKING:",
-]
+exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
