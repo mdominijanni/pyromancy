@@ -1,0 +1,1 @@
+# Classifying MNIST with a Hierarchical PCN
