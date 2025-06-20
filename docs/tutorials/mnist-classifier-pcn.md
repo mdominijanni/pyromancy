@@ -15,7 +15,7 @@ from torchvision.transforms import v2
 from tqdm.notebook import tqdm
 
 import pyromancy as pyro
-from pyromancy.nodes import StandardGaussianNode, IsotropicGaussianNode
+from pyromancy.nodes import StandardGaussianNode
 ```
 
 In addition to the import statements for external libraries, we import `pyromancy` as the shorthand `pyro` and a [`Node`](<api-reference/nodes:pyromancy.nodes>) class: {py:class}`~pyromancy.nodes.StandardGaussianNode`.
@@ -80,6 +80,8 @@ where $\mathbf{z}$ is the input to the layer, and $\mathbf{W}$ and $\mathbf{b}$ 
 :::
 
 We'll define a PCN with four nodes, of sizes 784 (the input), 256 (the first latent state), 256 (the second latent state), and 10 (the output). There are three edges connecting these, using {py:class}`~torch.nn.Linear` to model the trainable affine transformation with {py:class}`~torch.nn.ReLU` as the nonlinearity.
+
+Just like the corresponding FNN, this model has 268,800 weight parameters and 522 bias parameters.
 
 ```python
 class PCN(nn.Module):
@@ -167,7 +169,12 @@ m_opt = optim.Adam(pyro.get_mstep_params(pcn), lr=0.001)
 
 Here we set up the training procedure to run for 10 epochs, where 32 E-steps are performed for each batch of 500, then the trainable parameters are updated with a single M-step. The functions {py:func}`~pyromancy.get_estep_params` and {py:func}`~pyromancy.get_mstep_params` are used to separate which parameters should be updated on which type of step (by default, if a {py:class}`~torch.nn.Module` doesn't specify these, the parameters are assumed to be updated on M-steps). Additionally, since we want to fix the values of the input and output node during training, we use the `exclude` argument to leave those out when retrieving the E-step parameters.
 
-## Training/Inference Loop
+## Training/Testing Loop
+
+Finally, we create the training/testing loop over the dataset. Unlike for an FNN, the training procedure is broken down into the following steps:
+- Initialize states of the network with the input, output, and *predictions* of latent states.
+- Repeatedly perform E-steps to refine the (unfixed) node state to reduce the network's energy.
+- Perform an M-step to refine *how* the predictions are generated.
 
 ```python
 accs = []
