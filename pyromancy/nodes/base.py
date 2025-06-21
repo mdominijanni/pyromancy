@@ -47,7 +47,7 @@ class Node(nn.Module, ABC):
             Use :py:meth:`~pyromancy.nodes.base.Node.bshape` for a version to use
             when constructing broadcastable tensors.
         """
-        return self._shape.rawshape[1:]
+        return self._shape.rshape[1:]
 
     @property
     def bshape(self) -> tuple[int, ...]:
@@ -61,7 +61,7 @@ class Node(nn.Module, ABC):
             Use :py:meth:`~pyromancy.nodes.base.Node.shape` for a version to use
             that preserves placeholders.
         """
-        return self._shape.shape[1:]
+        return self._shape.bshape[1:]
 
     @property
     def size(self) -> int:

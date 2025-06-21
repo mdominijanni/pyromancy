@@ -33,11 +33,11 @@ class TestShape:
         ((5, None, None, 3, None), (None, None), (3, 4)),
         ids=("mixed", "all_virtual", "all_concrete"),
     )
-    def test_prop_rawshape(self, shape):
+    def test_prop_rshape(self, shape):
         shp = Shape(*shape)
 
         sol = shape
-        res = shp.rawshape
+        res = shp.rshape
 
         assert sol == res
 
@@ -46,11 +46,11 @@ class TestShape:
         ((5, None, None, 3, None), (None, None), (3, 4)),
         ids=("mixed", "all_virtual", "all_concrete"),
     )
-    def test_prop_shape(self, shape):
+    def test_prop_bshape(self, shape):
         shp = Shape(*shape)
 
         sol = tuple(map(lambda d: d if isinstance(d, int) else 1, shape))
-        res = shp.shape
+        res = shp.bshape
 
         assert sol == res
 

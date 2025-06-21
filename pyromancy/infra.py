@@ -77,7 +77,7 @@ class Shape:
         return iter(self._rawshape)
 
     @property
-    def rawshape(self) -> tuple[int | None, ...]:
+    def rshape(self) -> tuple[int | None, ...]:
         r"""Tensor shape, including placeholder dimensions.
 
         Returns:
@@ -86,7 +86,7 @@ class Shape:
         return self._rawshape
 
     @property
-    def shape(self) -> tuple[int, ...]:
+    def bshape(self) -> tuple[int, ...]:
         r"""Tensor shape, with placeholder dimensions set to unit length.
 
         Returns:
@@ -101,7 +101,7 @@ class Shape:
         Returns:
             int: minimal number of tensor elements.
         """
-        return math.prod(self.shape)
+        return math.prod(self.bshape)
 
     @property
     def ndim(self) -> int:
