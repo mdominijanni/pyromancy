@@ -19,7 +19,7 @@ class BiasNode(Node):
     bias: nn.Parameter
 
     def __init__(self, *shape: int | None) -> None:
-        nn.Module.__init__(self, *shape)
+        Node.__init__(self, *shape)
         self.bias = nn.Parameter(torch.empty(self.bshape), True)
 
         with torch.no_grad():
@@ -78,7 +78,7 @@ class FixedNode(Node):
 
     def __init__(self, *shape: int | None) -> None:
         Node.__init__(self, *shape)
-        self.value = nn.Buffer(torch.empty(0), True)
+        self.value = nn.Buffer(torch.empty(0))
 
     @torch.no_grad()
     def reset(self) -> None:
@@ -149,7 +149,7 @@ class FixedNode(Node):
 
 
 @eparameters("value")
-class FloatingNode(Node):
+class FloatNode(Node):
     r"""Input node with an trainable value.
 
     Args:

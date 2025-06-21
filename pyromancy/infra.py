@@ -1,5 +1,5 @@
 import math
-from typing import Iterator, overload
+from typing import Any, Iterator, overload
 
 import einops as ein
 import torch
@@ -52,6 +52,14 @@ class Shape:
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({", ".join(str(d) for d in self._rawshape)})"
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, type(self)):
+            return self._rawshape == other._rawshape
+        elif isinstance(other, tuple):
+            return self._rawshape == other
+        else:
+            return False
 
     @overload
     def __getitem__(self, index: int) -> int | None: ...

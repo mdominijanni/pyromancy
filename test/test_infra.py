@@ -106,6 +106,29 @@ class TestShape:
 
         assert sol == res
 
+    @pytest.mark.parametrize(
+        "shape",
+        ((5, None, None, 3, None), (None, None), (3, 4)),
+        ids=("mixed", "all_virtual", "all_concrete"),
+    )
+    def test_eq(self, shape):
+        shp = Shape(*shape)
+
+        assert shp == Shape(*shape)
+        assert shp == shape
+
+    @pytest.mark.parametrize(
+        "shape",
+        ((5, None, None, 3, None), (None, None), (3, 4)),
+        ids=("mixed", "all_virtual", "all_concrete"),
+    )
+    def test_ne(self, shape):
+        shp = Shape(*shape)
+        other = (*shape[:-1], 1)
+
+        assert shp != Shape(*other)
+        assert shp != other
+
     @pytest.mark.parametrize("shape", ((1, None), (2, "3", 4)))
     def test_compat_badtype(self, shape):
         shp = Shape(*(5, None, None, 3, None))
