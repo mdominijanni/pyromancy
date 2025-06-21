@@ -43,17 +43,21 @@ class BiasNode(Node):
         """
         return self.bias - pred
 
-    def forward(self, batch_size: int, *fill: int) -> torch.Tensor:
-        r"""Expands bias tensor for network.
+    def forward(self, inputs: torch.Tensor, **kwargs) -> torch.Tensor:
+        r"""Expands bias tensor for the network.
 
         Args:
-            batch_size (int): target batch size.
-            *fill (int): additional sizes to fill placeholder dimensions.
+            inputs (~torch.Tensor): tensor to use as the shape for the returned bias.
 
         Returns:
             ~torch.Tensor: expanded bias tensor.
+
+        Tip:
+            ``inputs`` should have the desired shape (including the batch dimension)
+            to use the returned bias as a prediction for initialization/inference. The
+            contents, device, and data type of ``inputs`` are unused.
         """
-        return self.bias.unsqueeze(0).expand(self.shapeobj.filled(batch_size, *fill))
+        return self.bias.unsqueeze(0).expand_as(inputs)
 
 
 class FixedNode(Node):
@@ -125,7 +129,7 @@ class FixedNode(Node):
         """
         return self.value - pred
 
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+    def forward(self, inputs: torch.Tensor, **kwargs) -> torch.Tensor:
         r"""Computes a forward pass on the node.
 
         When ``self.training`` is True, the prediction is assigned to the value and then
@@ -214,7 +218,7 @@ class FloatingNode(Node):
         """
         return self.value - pred
 
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+    def forward(self, inputs: torch.Tensor, **kwargs) -> torch.Tensor:
         r"""Computes a forward pass on the node.
 
         When ``self.training`` is True, the prediction is assigned to the value and then

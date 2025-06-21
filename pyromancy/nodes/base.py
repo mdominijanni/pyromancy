@@ -81,6 +81,30 @@ class Node(nn.Module, ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def forward(self, inputs: torch.Tensor, **kwargs) -> torch.Tensor:
+        r"""Computes a forward pass on the node.
+
+        Args:
+            inputs (~torch.Tensor): input to the node.
+
+        Returns:
+            ~torch.Tensor: value of the node.
+
+        Raises:
+            NotImplementedError: must be implemented by subclasses.
+
+        Important:
+            Subclasses implementing this method should perform the following operations:
+            - Initialize the value of the node based on ``inputs`` if ``self.training`` is ``True``.
+            - Return the value of the node.
+
+            Most subclasses should inherit from :py:class:`~pyromancy.nodes.PredictiveNode`
+            instead, although special cases may inherit from this class instead (see
+            :py:class:`~pyromancy.nodes.BiasNode` for an example of this).
+        """
+        raise NotImplementedError
+
 
 @eparameters("value")
 class PredictiveNode(Node, ABC):
@@ -164,7 +188,7 @@ class PredictiveNode(Node, ABC):
         """
         raise NotImplementedError
 
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+    def forward(self, inputs: torch.Tensor, **kwargs) -> torch.Tensor:
         r"""Computes a forward pass on the node.
 
         When ``self.training`` is True, the prediction is assigned to the value and then
