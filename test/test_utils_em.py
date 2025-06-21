@@ -214,6 +214,30 @@ class TestGetNamedEStepParams:
 
         assert sol == res
 
+    def test_excluded_param(self):
+        m = SpecifiedEM()
+        m.inner = SpecifiedEM()
+
+        sol = {"e2": m.e2, "inner.e1": m.inner.e1}
+        res = {n: p for n, p in get_named_estep_params(m, exclude=(m.e1, m.inner.e2))}
+
+        assert sol == res
+
+    def test_excluded_module(self):
+        m = SpecifiedEM()
+        m.inner1 = SpecifiedEM()
+        m.inner2 = SpecifiedEM()
+
+        sol = {
+            "e1": m.e1,
+            "e2": m.e2,
+            "inner2.e1": m.inner2.e1,
+            "inner2.e2": m.inner2.e2,
+        }
+        res = {n: p for n, p in get_named_estep_params(m, exclude=(m.inner1,))}
+
+        assert sol == res
+
 
 class TestGetEStepParams:
 
@@ -280,6 +304,25 @@ class TestGetEStepParams:
         if default:
             sol |= {m.p1, m.p2, m.inner.p1, m.inner.p2}
         res = {*get_estep_params(m, default=default)}
+
+        assert sol == res
+
+    def test_excluded_param(self):
+        m = SpecifiedEM()
+        m.inner = SpecifiedEM()
+
+        sol = {m.e2, m.inner.e1}
+        res = {*get_estep_params(m, exclude=(m.e1, m.inner.e2))}
+
+        assert sol == res
+
+    def test_excluded_module(self):
+        m = SpecifiedEM()
+        m.inner1 = SpecifiedEM()
+        m.inner2 = SpecifiedEM()
+
+        sol = {m.e1, m.e2, m.inner2.e1, m.inner2.e2}
+        res = {*get_estep_params(m, exclude=(m.inner1,))}
 
         assert sol == res
 
@@ -367,6 +410,30 @@ class TestGetNamedMStepParams:
 
         assert sol == res
 
+    def test_excluded_param(self):
+        m = SpecifiedEM()
+        m.inner = SpecifiedEM()
+
+        sol = {"m2": m.m2, "inner.m1": m.inner.m1}
+        res = {n: p for n, p in get_named_mstep_params(m, exclude=(m.m1, m.inner.m2))}
+
+        assert sol == res
+
+    def test_excluded_module(self):
+        m = SpecifiedEM()
+        m.inner1 = SpecifiedEM()
+        m.inner2 = SpecifiedEM()
+
+        sol = {
+            "m1": m.m1,
+            "m2": m.m2,
+            "inner2.m1": m.inner2.m1,
+            "inner2.m2": m.inner2.m2,
+        }
+        res = {n: p for n, p in get_named_mstep_params(m, exclude=(m.inner1,))}
+
+        assert sol == res
+
 
 class TestGetMStepParams:
 
@@ -433,5 +500,24 @@ class TestGetMStepParams:
         if default:
             sol |= {m.p1, m.p2, m.inner.p1, m.inner.p2}
         res = {*get_mstep_params(m, default=default)}
+
+        assert sol == res
+
+    def test_excluded_param(self):
+        m = SpecifiedEM()
+        m.inner = SpecifiedEM()
+
+        sol = {m.m2, m.inner.m1}
+        res = {*get_mstep_params(m, exclude=(m.m1, m.inner.m2))}
+
+        assert sol == res
+
+    def test_excluded_module(self):
+        m = SpecifiedEM()
+        m.inner1 = SpecifiedEM()
+        m.inner2 = SpecifiedEM()
+
+        sol = {m.m1, m.m2, m.inner2.m1, m.inner2.m2}
+        res = {*get_mstep_params(m, exclude=(m.inner1,))}
 
         assert sol == res
