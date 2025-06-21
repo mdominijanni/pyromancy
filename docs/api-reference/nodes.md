@@ -1,3 +1,4 @@
+(api-pyromancy-nodes)=
 # pyromancy.nodes
 
 ```{eval-rst}

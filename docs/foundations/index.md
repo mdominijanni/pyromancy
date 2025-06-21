@@ -1,7 +1,0 @@
-# Foundations
-
-```{toctree}
-:hidden:
-
-overview
-```

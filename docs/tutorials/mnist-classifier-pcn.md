@@ -1,6 +1,11 @@
+(tutorial-mnist-classifier-pcn)=
 # Classifying MNIST with a Hierarchical PCN
 
 In this example, we construct a simple predictive coding network (PCN) for classifying the MNIST dataset.
+
+```{tip}
+Download this example as a [Jupyter notebook](../_static/notebooks/mnist-classifier-pcn.ipynb).
+```
 
 ## Setting Up the Notebook
 
@@ -18,7 +23,7 @@ import pyromancy as pyro
 from pyromancy.nodes import StandardGaussianNode
 ```
 
-In addition to the import statements for external libraries, we import `pyromancy` as the shorthand `pyro` and a [`Node`](<api-reference/nodes:pyromancy.nodes>) class: {py:class}`~pyromancy.nodes.StandardGaussianNode`.
+In addition to the import statements for external libraries, we import `pyromancy` as the shorthand `pyro` and a node class: {py:class}`~pyromancy.nodes.StandardGaussianNode`.
 
 Next, we need to configure the compute device on which operations are performed, and the datatype of tensors to use.
 
@@ -67,7 +72,7 @@ After we set up the notebook, we need to define the PCN model we're using. A hie
 
 However, unlike with an FNN, a PCN is split into two major parts: *nodes* and *edges*. The nodes define the *states* of the model: input, latent, and output, as well as how the *energy* is computed for those states. The edges define the parameterized functions to predict the value of one node, given the value of another.
 
-:::{note}
+```{note}
 There is a slight difference in convention between PCNs and FNNs. With nonlinearity $f$, the output $\boldsymbol{\mu}$ of a layer for an FNN is usually defined as:
 
 $$\boldsymbol{\mu} = f(\mathbf{W} \mathbf{z} + \mathbf{b})$$
@@ -77,7 +82,7 @@ whereas for a PCN it is defined as:
 $$\boldsymbol{\mu} = \mathbf{W} f(\mathbf{z}) + \mathbf{b}$$
 
 where $\mathbf{z}$ is the input to the layer, and $\mathbf{W}$ and $\mathbf{b}$ are the trainable weights and biases, respectively.
-:::
+```
 
 We'll define a PCN with four nodes, of sizes 784 (the input), 256 (the first latent state), 256 (the second latent state), and 10 (the output). There are three edges connecting these, using {py:class}`~torch.nn.Linear` to model the trainable affine transformation with {py:class}`~torch.nn.ReLU` as the nonlinearity.
 

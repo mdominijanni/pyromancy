@@ -1,3 +1,4 @@
+(api-pyromancy)=
 # pyromancy
 
 ```{eval-rst}
