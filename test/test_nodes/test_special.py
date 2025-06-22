@@ -21,11 +21,11 @@ class TestBiasNode:
     def test_init(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -41,11 +41,11 @@ class TestBiasNode:
     def test_prop_shapeobj(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -61,11 +61,11 @@ class TestBiasNode:
     def test_prop_shape(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -81,11 +81,11 @@ class TestBiasNode:
     def test_prop_bshape(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -101,11 +101,11 @@ class TestBiasNode:
     def test_prop_size(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -121,11 +121,11 @@ class TestBiasNode:
     def test_error(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -152,11 +152,11 @@ class TestBiasNode:
     def test_forward(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -194,11 +194,11 @@ class TestFixedNode:
     def test_prop_shapeobj(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -214,11 +214,11 @@ class TestFixedNode:
     def test_prop_shape(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -234,11 +234,11 @@ class TestFixedNode:
     def test_prop_bshape(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -254,11 +254,11 @@ class TestFixedNode:
     def test_prop_size(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -274,11 +274,11 @@ class TestFixedNode:
     def test_init_reset(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -327,11 +327,11 @@ class TestFixedNode:
     def test_error(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -363,11 +363,11 @@ class TestFixedNode:
     def test_forward(self, virtual_dims, training):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -406,11 +406,11 @@ class TestFloatNode:
     def test_prop_shapeobj(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -426,11 +426,11 @@ class TestFloatNode:
     def test_prop_shape(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -446,11 +446,11 @@ class TestFloatNode:
     def test_prop_bshape(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -466,11 +466,11 @@ class TestFloatNode:
     def test_prop_size(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -486,11 +486,11 @@ class TestFloatNode:
     def test_init_reset(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -539,11 +539,11 @@ class TestFloatNode:
     def test_error(self, virtual_dims):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 
@@ -575,11 +575,11 @@ class TestFloatNode:
     def test_forward(self, virtual_dims, training):
         match virtual_dims:
             case "none":
-                shape = randshape(5, 2, 5, 0)
+                shape = randshape(4, 2, 5, 0)
             case "some":
-                shape = randshape(5, 2, 5, 2)
+                shape = randshape(4, 2, 5, 2)
             case "all":
-                shape = randshape(5, 2, 5, 4)
+                shape = randshape(4, 2, 5, 4)
             case _:
                 raise AssertionError
 

@@ -5,7 +5,7 @@ def randshape(ndim: int, dmin: int, dmax: int, nvirtual: int) -> tuple[int | Non
     assert ndim > 0
     assert dmin > 0
     assert dmax > dmin
-    assert nvirtual < ndim
+    assert nvirtual <= ndim
 
     shape: list[int | None] = [
         random.randint(dmin, dmax) for _ in range(ndim - nvirtual)
