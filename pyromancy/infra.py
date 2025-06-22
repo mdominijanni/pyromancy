@@ -51,7 +51,7 @@ class Shape:
         )
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({", ".join(str(d) for d in self._rawshape)})"
+        return f"{type(self).__name__}({', '.join(str(d) for d in self._rawshape)})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, type(self)):

@@ -21,3 +21,5 @@ __all__ = [
     # additional modules
     "nodes",
 ]
+
+__version__ = "0.0.1"

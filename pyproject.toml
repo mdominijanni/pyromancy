@@ -38,10 +38,10 @@ docs = [
   "sphinx-remove-toctrees>=1.0.0",
   "furo>=2024.8.6",
 ]
-test = ["coverage[toml]", "pytest>=8.3.4", "pytest-cov>=6.0.0", "pytest-mock"]
+test = ["coverage[toml]", "pytest>=8.3.4", "pytest-cov>=6.0.0"]
 
 [tool.hatch.version]
-path = "pyromancy/__about__.py"
+path = "pyromancy/__init__.py"
 
 [tool.hatch.envs.docs]
 dependencies = ["pyromancy-ai[docs]"]
@@ -54,7 +54,7 @@ detached = true
 extra-dependencies = ["flake8", "black", "isort"]
 [tool.hatch.envs.style.scripts]
 check = [
-  "flake8 ./pyromancy ./test",
+  "flake8 --ignore=E501 ./pyromancy ./test",
   "black --check --diff ./pyromancy ./test",
   "isort --check-only --diff ./pyromancy ./test",
 ]
@@ -64,11 +64,11 @@ fmt = ["isort ./pyromancy ./test", "black ./pyromancy ./test", "check"]
 dependencies = ["pyromancy-ai[test]"]
 
 [tool.hatch.envs.test.scripts]
-run-coverage = "pytest --cov-config=pyproject.toml --cov=pkg --cov=tests"
+run-coverage = "pytest --cov-config=pyproject.toml --cov=pyromancy --cov=test"
 run = "run-coverage --no-cov"
 
 [tool.hatch.envs.types]
-extra-dependencies = ["mypy>=1.16.1"]
+extra-dependencies = ["pyromancy-ai[test]", "mypy>=1.16.1"]
 [tool.hatch.envs.types.scripts]
 check = "mypy --install-types --non-interactive {args:pyromancy test}"
 
