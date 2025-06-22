@@ -23,7 +23,7 @@ import pyromancy as pyro
 from pyromancy.nodes import StandardGaussianNode
 ```
 
-In addition to the import statements for external libraries, we import `pyromancy` as the shorthand `pyro` and a node class: {py:class}`~pyromancy.nodes.StandardGaussianNode`.
+In addition to the import statements for external libraries, we import `pyromancy` as the shorthand `pyro` and a node class {py:class}`~pyromancy.nodes.StandardGaussianNode`.
 
 Next, we need to configure the compute device on which operations are performed, and the datatype of tensors to use.
 

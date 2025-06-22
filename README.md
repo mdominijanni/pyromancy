@@ -16,10 +16,10 @@ Pyromancy is available as a package on PyPI and can be installed as follows.
 pip install pyromancy-ai
 ```
 
-By default, this installs the `torch` and `torchvision` packages with *only* CPU support (Linux/Windows) or support for CPU and MPS (macOS). To include support for CUDA or ROCm, a corresponding ``index-url`` must be specified.
+By default, this installs the `torch` and `torchvision` packages with *only* CPU support (Linux/Windows) or support for CPU and MPS (macOS). To include support for CUDA or ROCm, a corresponding ``extra-index-url`` must be specified.
 
 ```console
-pip install pyromancy-ai --index-url https://download.pytorch.org/whl/cu128
+pip install pyromancy-ai --extra-index-url https://download.pytorch.org/whl/cu128
 ```
 
 Installing with this command includes support for CPU and for CUDA 12.8. The installation options can be found on PyTorch's [getting started](https://pytorch.org/get-started/locally/) page.

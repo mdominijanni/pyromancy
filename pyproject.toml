@@ -19,6 +19,8 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = ["einops>=0.7", "torch>=2.6.0", "torchvision>=0.21.0"]
 

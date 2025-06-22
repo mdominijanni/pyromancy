@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# build files
+dist/
+
 # sphinx
 docs/*/generated
 docs/_build
