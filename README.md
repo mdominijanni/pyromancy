@@ -12,13 +12,13 @@ Pyromancy is a compact library for [predictive coding](https://arxiv.org/abs/240
 ## Installation
 Pyromancy is available as a package on PyPI and can be installed as follows.
 
-```console
+```bash
 pip install pyromancy-ai
 ```
 
 By default, this installs the `torch` and `torchvision` packages with *only* CPU support (Linux/Windows) or support for CPU and MPS (macOS). To include support for CUDA or ROCm, a corresponding ``extra-index-url`` must be specified.
 
-```console
+```bash
 pip install pyromancy-ai --extra-index-url https://download.pytorch.org/whl/cu128
 ```
 
