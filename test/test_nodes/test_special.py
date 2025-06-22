@@ -342,8 +342,13 @@ class TestFixedNode:
         )
         _ = node.init(data)
 
-        assert node.value.shape == data.shape
-        assert torch.allclose(node.value, data)
+        pred = torch.rand_like(data)
+
+        sol = data - pred
+        res = node.error(pred)
+
+        assert sol.shape == res.shape
+        assert torch.allclose(sol, res)
 
     @pytest.mark.parametrize(
         "virtual_dims",
@@ -549,8 +554,13 @@ class TestFloatNode:
         )
         _ = node.init(data)
 
-        assert node.value.shape == data.shape
-        assert torch.allclose(node.value, data)
+        pred = torch.rand_like(data)
+
+        sol = data - pred
+        res = node.error(pred)
+
+        assert sol.shape == res.shape
+        assert torch.allclose(sol, res)
 
     @pytest.mark.parametrize(
         "virtual_dims",

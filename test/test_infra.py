@@ -33,6 +33,19 @@ class TestShape:
         ((5, None, None, 3, None), (None, None), (3, 4)),
         ids=("mixed", "all_virtual", "all_concrete"),
     )
+    def test_repr(self, shape):
+        shp = Shape(*shape)
+
+        sol = f"Shape({', '.join(str(d) for d in shape)})"
+        res = shp.__repr__()
+
+        assert sol == res
+
+    @pytest.mark.parametrize(
+        "shape",
+        ((5, None, None, 3, None), (None, None), (3, 4)),
+        ids=("mixed", "all_virtual", "all_concrete"),
+    )
     def test_prop_rshape(self, shape):
         shp = Shape(*shape)
 

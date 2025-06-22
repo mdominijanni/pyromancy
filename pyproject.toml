@@ -85,7 +85,6 @@ only-include = ["pyromancy"]
 source_pkgs = ["pyromancy", "test"]
 branch = true
 parallel = true
-omit = ["pyromancy/__about__.py"]
 
 [tool.coverage.paths]
 pyromancy = ["pyromancy", "*/pyromancy/pyromancy"]
