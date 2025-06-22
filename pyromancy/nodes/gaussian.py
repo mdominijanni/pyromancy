@@ -684,5 +684,5 @@ class MultivariateGaussianNode(AbstractGaussianNode):
         """
         L = self._cholesky_factor_l()
         mu, pragma = self.shapeobj.coalesce(value)
-        x = L @ torch.randn(mu.shape, generator=generator, out=torch.empty_like(mu))
-        return self.shapeobj.disperse(x, pragma)
+        x = L @ torch.randn(mu.shape, generator=generator, out=torch.empty_like(mu)).t()
+        return self.shapeobj.disperse(x.t(), pragma)

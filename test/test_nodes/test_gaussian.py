@@ -264,6 +264,24 @@ class TestStandardGaussianNode:
             assert node.value.shape == data.shape
             assert torch.allclose(node.value, res)
 
+    @torch.no_grad()
+    def test_sample(self):
+        nshape = (None, 3)
+        dshape = (5, 2, 3)
+
+        node = StandardGaussianNode(*nshape)
+        mu = torch.rand(*dshape)
+
+        gsol = torch.Generator().manual_seed(42)
+        gres = torch.Generator().manual_seed(42)
+
+        sol = torch.randn(mu.shape, generator=gsol)
+        res = node.sample(mu, gres)
+
+        assert res.shape == mu.shape
+        assert res.shape == sol.shape
+        assert torch.allclose(res, sol)
+
     def test_estep_params(self):
         m = nn.ModuleList((StandardGaussianNode(4, None, 3, 3),))
         assert dict(get_named_estep_params(m)) == {"0.value": m[0].value}
@@ -571,6 +589,28 @@ class TestIsotropicGaussianNode:
             assert node.value.shape == data.shape
             assert torch.allclose(node.value, res)
 
+    @torch.no_grad()
+    def test_sample(self):
+        nshape = (None, 3)
+        dshape = (5, 2, 3)
+
+        node = IsotropicGaussianNode(*nshape)
+        var = torch.rand(())
+        node.covariance = var
+
+        mu = torch.rand(*dshape)
+        std = var.sqrt()
+
+        gsol = torch.Generator().manual_seed(42)
+        gres = torch.Generator().manual_seed(42)
+
+        sol = std * torch.randn(mu.shape, generator=gsol)
+        res = node.sample(mu, gres)
+
+        assert res.shape == mu.shape
+        assert res.shape == sol.shape
+        assert torch.allclose(res, sol)
+
     def test_estep_params(self):
         m = nn.ModuleList((IsotropicGaussianNode(4, None, 3, 3),))
         assert dict(get_named_estep_params(m)) == {"0.value": m[0].value}
@@ -877,6 +917,32 @@ class TestFactorizedGaussianNode:
         if training:
             assert node.value.shape == data.shape
             assert torch.allclose(node.value, res)
+
+    @torch.no_grad()
+    def test_sample(self):
+        nshape = (None, 3)
+        bshape = (1, 3)
+        dshape = (5, 2, 3)
+
+        node = FactorizedGaussianNode(*nshape)
+        var = torch.rand(math.prod(bshape))
+        node.covariance = var
+
+        mu = torch.rand(*dshape)
+        std = var.sqrt()
+
+        gsol = torch.Generator().manual_seed(42)
+        gres = torch.Generator().manual_seed(42)
+
+        mu_, pragma = node.shapeobj.coalesce(mu)
+        sample = std * torch.randn(mu_.shape, generator=gsol)
+
+        sol = node.shapeobj.disperse(sample, pragma)
+        res = node.sample(mu, gres)
+
+        assert res.shape == mu.shape
+        assert res.shape == sol.shape
+        assert torch.allclose(res, sol)
 
     def test_estep_params(self):
         m = nn.ModuleList((FactorizedGaussianNode(4, None, 3, 3),))
@@ -1189,6 +1255,34 @@ class TestMultivariateGaussianNode:
         if training:
             assert node.value.shape == data.shape
             assert torch.allclose(node.value, res)
+
+    @torch.no_grad()
+    def test_sample(self):
+        nshape = (None, 3)
+        bshape = (1, 3)
+        dshape = (5, 2, 3)
+
+        node = MultivariateGaussianNode(*nshape)
+        cov = torch.rand(math.prod(bshape), math.prod(bshape))
+        cov = cov @ cov.t()
+        node.covariance = cov
+
+        mu = torch.rand(*dshape)
+        L, info = torch.linalg.cholesky_ex(cov)
+        assert info.item() == 0
+
+        gsol = torch.Generator().manual_seed(42)
+        gres = torch.Generator().manual_seed(42)
+
+        mu_, pragma = node.shapeobj.coalesce(mu)
+        sample = L @ torch.randn(mu_.shape, generator=gsol).t()
+
+        sol = node.shapeobj.disperse(sample.t(), pragma)
+        res = node.sample(mu, gres)
+
+        assert res.shape == mu.shape
+        assert res.shape == sol.shape
+        assert torch.allclose(res, sol)
 
     def test_estep_params(self):
         m = nn.ModuleList((MultivariateGaussianNode(4, None, 3, 3),))
