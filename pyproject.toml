@@ -22,7 +22,7 @@ classifiers = [
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-dependencies = ["einops>=0.7", "torch>=2.6.0", "torchvision>=0.21.0"]
+dependencies = ["einops>=0.7", "torch>=2.7.0", "torchvision>=0.22.0"]
 
 [project.urls]
 Source = "https://github.com/mdominijanni/pyromancy"
@@ -39,6 +39,7 @@ docs = [
   "furo>=2024.8.6",
 ]
 test = ["coverage[toml]", "pytest>=8.3.4", "pytest-cov>=6.0.0"]
+all = ["pyromancy-ai[docs,test]"]
 
 [tool.hatch.version]
 path = "pyromancy/__init__.py"

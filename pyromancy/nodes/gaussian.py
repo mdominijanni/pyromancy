@@ -114,7 +114,7 @@ class StandardGaussianNode(AbstractGaussianNode):
 
         .. math::
             \begin{aligned}
-                F
+                \mathcal{F}
                 &= \frac{1}{2} (\mathbf{z} - \boldsymbol{\mu})
                 (\mathbf{z} - \boldsymbol{\mu})^\intercal \\
                 &= \frac{1}{2} \lVert\mathbf{z} - \boldsymbol{\mu}\rVert_2^2
@@ -124,7 +124,7 @@ class StandardGaussianNode(AbstractGaussianNode):
             pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
-            ~torch.Tensor: variational free energy :math:`F`.
+            ~torch.Tensor: variational free energy :math:`\mathcal{F}`.
         """
         diff = (self.value - pred).flatten(1)
         return 0.5 * (diff.unsqueeze(1) @ diff.unsqueeze(2)).flatten()
@@ -275,7 +275,7 @@ class IsotropicGaussianNode(AbstractGaussianNode):
 
         .. math::
             \begin{aligned}
-                F
+                \mathcal{F}
                 &= \frac{1}{2} \left((\mathbf{z} - \boldsymbol{\mu})
                 ((\mathbf{z} - \boldsymbol{\mu}) \sigma^{-1})^\intercal
                 + N \log \sigma\right) \\
@@ -287,7 +287,7 @@ class IsotropicGaussianNode(AbstractGaussianNode):
             pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
-            ~torch.Tensor: variational free energy :math:`F`.
+            ~torch.Tensor: variational free energy :math:`\mathcal{F}`.
         """
         diff = (self.value - pred).flatten(1)
         y = diff / self.logvar.exp()
@@ -447,7 +447,7 @@ class FactorizedGaussianNode(AbstractGaussianNode):
         r"""Variational free energy with respect to the prediction.
 
         .. math::
-            F = \frac{1}{2} \left(
+            \mathcal{F} = \frac{1}{2} \left(
             (\mathbf{z} - \boldsymbol{\mu})
             ((\mathbf{z} - \boldsymbol{\mu}) \oslash \boldsymbol{\sigma})^\intercal
             + N \log \sigma\right)
@@ -456,7 +456,7 @@ class FactorizedGaussianNode(AbstractGaussianNode):
             pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
-            ~torch.Tensor: variational free energy :math:`F`.
+            ~torch.Tensor: variational free energy :math:`\mathcal{F}`.
         """
         diff, pragma = self.shapeobj.coalesce(self.value - pred)
         y = diff / self.logvar.exp()
@@ -645,7 +645,7 @@ class MultivariateGaussianNode(AbstractGaussianNode):
         r"""Variational free energy with respect to the prediction.
 
         .. math::
-            F = \frac{1}{2} \left(
+            \mathcal{F} = \frac{1}{2} \left(
             (\mathbf{z} - \boldsymbol{\mu})
             \boldsymbol{\Sigma}^{-1} (\mathbf{z} - \boldsymbol{\mu})^\intercal
             + \log \lvert\boldsymbol{\Sigma}\rvert \right)
@@ -654,7 +654,7 @@ class MultivariateGaussianNode(AbstractGaussianNode):
             pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
-            ~torch.Tensor: variational free energy :math:`F`.
+            ~torch.Tensor: variational free energy :math:`\mathcal{F}`.
         """
         diff, pragma = self.shapeobj.coalesce(self.value - pred)
         L = self._cholesky_factor_l()
