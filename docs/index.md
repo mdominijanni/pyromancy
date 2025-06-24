@@ -26,6 +26,9 @@ pip install pyromancy-ai --extra-index-url https://download.pytorch.org/whl/cu12
 
 Installing with this command includes support for CPU and for CUDA 12.8. The installation options can be found on PyTorch's [getting started](https://pytorch.org/get-started/locally/) page.
 
+## Getting Started
+See the example, {ref}`tutorial-mnist-classifier-pcn`, for a complete worked-out example of how to build and train a predictive coding network.
+
 ## Site Navigation
 
 ### {ref}`api-reference`
