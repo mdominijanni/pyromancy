@@ -152,7 +152,7 @@ We also defined a few methods for convenience:
 
 Unlike with FNNs trained with backprop, where a loss $\mathcal{L}$ is computed between the network outputs and the target, PCNs are trained to minimize the *variational free energy*. Although the specific calculation for this depends on the variational distribution assumed by a given `Node`, `StandardGaussianNode` assumes a Gaussian distribution with unit variance, i.e. $\mathcal{N}(\boldsymbol{\mu}, \mathbf{I})$. The free energy for a node $\ell$ with a state $z$ is then computed relative to the prediction $\boldsymbol{\mu}$.
 
-$$f(\mathbf{z}; \boldsymbol{\mu}) = \lVert \mathbf{z} - \boldsymbol{\mu} \rVert_2^2$$
+$$f(\mathbf{z}; \boldsymbol{\mu}) = \frac{1}{2} \lVert \mathbf{z} - \boldsymbol{\mu} \rVert_2^2$$
 
 The energy of the entire network is the sum of the individual energy terms.
 
