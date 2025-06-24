@@ -7,10 +7,10 @@ import torch.nn as nn
 
 from pyromancy import get_named_estep_params, get_named_mstep_params
 from pyromancy.nodes import (
-    StandardGaussianNode,
-    IsotropicGaussianNode,
     FactorizedGaussianNode,
+    IsotropicGaussianNode,
     MultivariateGaussianNode,
+    StandardGaussianNode,
 )
 
 from ..common import randshape
