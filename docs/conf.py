@@ -55,5 +55,6 @@ html_theme = "furo"
 html_static_path = ["_static"]
 html_title = "Pyromancy"
 html_logo = "_static/images/pyromancy-logo.svg"
+html_favicon = "_static/images/pyromancy-favicon.svg"
 
 html_css_files = ["css/shape.css"]
