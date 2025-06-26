@@ -17,17 +17,50 @@ class BiasNode(Node):
     """
 
     bias: nn.Parameter
+    _initshape: torch.Size
 
     def __init__(self, *shape: int | None) -> None:
         Node.__init__(self, *shape)
         self.bias = nn.Parameter(torch.empty(self.bshape), True)
+        self._initshape = self.bias.unsqueeze(0).shape
 
         with torch.no_grad():
             self.bias.fill_(0.0)
 
+    @property
+    def activity(self) -> torch.Tensor:
+        r"""Activity of the node.
+
+        Returns:
+            ~torch.Tensor: activity (state) of the node.
+        """
+        return self.bias.unsqueeze(0).expand(self._initshape)
+
     def reset(self) -> None:
         r"""Resets transient node state."""
-        pass
+        self._initshape = self.bias.shape
+
+    def init(self, value: torch.Tensor) -> torch.Tensor:
+        r"""Initializes the node's returned bias with a new shape.
+
+        Args:
+            value (~torch.Tensor): tensor to use as the shape for the returned bias.
+
+        Returns:
+            ~torch.Tensor: the expanded bias
+
+        Raises:
+            RuntimeError: shape of ``value`` is incompatible with the node.
+        """
+        if not self.shapeobj.compat(*value.shape):
+            raise ValueError(
+                f"shape of `value` {(*value.shape,)} is incompatible "
+                f"with node shape {(*self.shapeobj,)}"
+            )
+
+        self._initshape = value.shape
+
+        return self.bias.unsqueeze(0).expand(self._initshape)
 
     def error(self, pred: torch.Tensor) -> torch.Tensor:
         r"""Error between the prediction and node state.
@@ -57,7 +90,10 @@ class BiasNode(Node):
             to use the returned bias as a prediction for initialization/inference. The
             contents, device, and data type of ``inputs`` are unused.
         """
-        return self.bias.unsqueeze(0).expand_as(inputs)
+        if self.training:
+            return self.init(inputs)
+        else:
+            return self.bias.unsqueeze(0).expand_as(inputs)
 
 
 class FixedNode(Node):
@@ -79,6 +115,15 @@ class FixedNode(Node):
     def __init__(self, *shape: int | None) -> None:
         Node.__init__(self, *shape)
         self.value = nn.Buffer(torch.empty(0))
+
+    @property
+    def activity(self) -> nn.Buffer:
+        r"""Activity of the node.
+
+        Returns:
+            ~torch.nn.Buffer: activity (state) of the node.
+        """
+        return self.value
 
     @torch.no_grad()
     def reset(self) -> None:
@@ -168,6 +213,15 @@ class FloatNode(Node):
     def __init__(self, *shape: int | None) -> None:
         Node.__init__(self, *shape)
         self.value = nn.Parameter(torch.empty(0), True)
+
+    @property
+    def activity(self) -> nn.Parameter:
+        r"""Activity of the node.
+
+        Returns:
+            ~torch.nn.Parameter: activity (state) of the node.
+        """
+        return self.value
 
     @torch.no_grad()
     def reset(self) -> None:

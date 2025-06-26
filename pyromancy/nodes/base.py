@@ -72,9 +72,52 @@ class Node(nn.Module, ABC):
         """
         return self._shape.size
 
+    @property
+    @abstractmethod
+    def activity(self) -> torch.Tensor:
+        r"""Activity of the node.
+
+        Returns:
+            ~torch.Tensor: activity (state) of the node.
+
+        Raises:
+            NotImplementedError: must be implemented by subclasses.
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def reset(self) -> None:
         r"""Resets transient node state.
+
+        Raises:
+            NotImplementedError: must be implemented by subclasses.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def init(self, value: torch.Tensor) -> torch.Tensor:
+        r"""Initializes the node's state.
+
+        Args:
+            value (~torch.Tensor): value for the basis of initialization.
+
+        Returns:
+            ~torch.Tensorr: the reinitialized value.
+
+        Raises:
+            NotImplementedError: must be implemented by subclasses.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def error(self, pred: torch.Tensor) -> torch.Tensor:
+        r"""Computes elementwise error for a prediction of the node state.
+
+        Args:
+            pred (~torch.Tensor): prediction of the node state.
+
+        Returns:
+            ~torch.Tensor: elementwise error between the state and a prediction.
 
         Raises:
             NotImplementedError: must be implemented by subclasses.
@@ -123,6 +166,15 @@ class PredictiveNode(Node, ABC):
         Node.__init__(self, *shape)
         self.value = nn.Parameter(torch.empty(0), True)
 
+    @property
+    def activity(self) -> nn.Parameter:
+        r"""Activity of the node.
+
+        Returns:
+            ~torch.nn.Parameter: activity (state) of the node.
+        """
+        return self.value
+
     @torch.no_grad()
     def reset(self) -> None:
         r"""Resets the node state.
@@ -159,32 +211,17 @@ class PredictiveNode(Node, ABC):
         return self.value
 
     @abstractmethod
-    def error(self, pred: torch.Tensor) -> torch.Tensor:
-        r"""Computes elementwise error for a prediction of the node state.
-
-        Args:
-            pred (~torch.Tensor): prediction of the node state.
-
-        Raises:
-            NotImplementedError: must be implemented by subclasses.
-
-        Returns:
-            ~torch.Tensor: elementwise error between the state and a prediction.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
     def energy(self, pred: torch.Tensor) -> torch.Tensor:
         r"""Computes variational free energy for a prediction of the node state.
 
         Args:
             pred (~torch.Tensor): prediction of the node state.
 
-        Raises:
-            NotImplementedError: must be implemented by subclasses.
-
         Returns:
             ~torch.Tensor: variational free energy between the state and a prediction.
+
+        Raises:
+            NotImplementedError: must be implemented by subclasses.
         """
         raise NotImplementedError
 

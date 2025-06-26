@@ -211,8 +211,6 @@ def get_estep_params(
             Defaults to None.
         recurse (bool, optional): if parameters that are not direct members should be included.
             Defaults to True.
-        remove_duplicate (bool, optional): if duplicated parameters should be excluded.
-            Defaults to True.
 
     Yields:
         nn.Parameter: E-step parameter.
@@ -350,8 +348,6 @@ def get_mstep_params(
         exclude (Sequence[nn.Parameter | nn.Module] | None) parameters and modules to exclude.
             Defaults to None.
         recurse (bool, optional): if parameters that are not direct members should be included.
-            Defaults to True.
-        remove_duplicate (bool, optional): if duplicated parameters should be excluded.
             Defaults to True.
 
     Yields:

@@ -149,7 +149,12 @@ class TestBiasNode:
         ("none", "some", "all"),
         ids=("virtual_dims='none'", "virtual_dims='some'", "virtual_dims='all'"),
     )
-    def test_forward(self, virtual_dims):
+    @pytest.mark.parametrize(
+        "training",
+        (True, False),
+        ids=("training=True", "training='False"),
+    )
+    def test_forward(self, virtual_dims, training):
         match virtual_dims:
             case "none":
                 shape = randshape(4, 2, 5, 0)
@@ -160,7 +165,7 @@ class TestBiasNode:
             case _:
                 raise AssertionError
 
-        node = BiasNode(*shape)
+        node = BiasNode(*shape).train(training)
         with torch.no_grad():
             node.bias.copy_(torch.rand_like(node.bias))
         data = torch.rand(
@@ -174,6 +179,10 @@ class TestBiasNode:
 
         assert sol.shape == res.shape
         assert torch.allclose(sol, res)
+
+        if training:
+            assert node.activity.shape == res.shape
+            assert torch.allclose(node.activity, res)
 
     def test_estep_params(self):
         m = nn.ModuleList((BiasNode(4, None, 3, 3),))
