@@ -1,4 +1,5 @@
-from typing import Any, Callable, Iterator, Sequence, Type, TypeVar
+from collections.abc import Callable, Iterator, Sequence
+from typing import Any, Type, TypeVar
 
 import torch.nn as nn
 

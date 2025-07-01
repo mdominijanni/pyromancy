@@ -1,5 +1,5 @@
 from . import nodes
-from .infra import Shape
+from .infra import LambdaModule, Shape
 from .utils import (
     eparameters,
     get_estep_params,
@@ -12,6 +12,7 @@ from .utils import (
 __all__ = [
     # core module
     "Shape",
+    "LambdaModule",
     "eparameters",
     "mparameters",
     "get_estep_params",
@@ -22,4 +23,4 @@ __all__ = [
     "nodes",
 ]
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"

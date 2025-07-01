@@ -1,8 +1,12 @@
+import functools
 import math
-from typing import Any, Iterator, overload
+import types
+from collections.abc import Callable, Iterator
+from typing import Any, overload
 
 import einops as ein
 import torch
+import torch.nn as nn
 
 
 class Shape:
@@ -203,3 +207,51 @@ class Shape:
             ~torch.Tensor: dispersed tensor.
         """
         return ein.rearrange(tensor, self._disperse_str, **pragma)
+
+
+class LambdaModule(nn.Module):
+    r"""Wrapper module for a Callable.
+
+    Args:
+        fn (Callable): callable to wrap.
+        *args (Any): prepended positional arguments for ``fn``.
+        *kwargs (Any): appended keyword arguments for ``fn``.
+
+    Raises:
+        TypeError: ``fn`` must be a ``Callable``.
+
+    Tip:
+        The behavior for ``*args`` and ``**kwargs`` mirrors that of
+        :py:func:`functools.partial`.
+    """
+
+    _fn: Callable
+    _args: tuple[Any, ...]
+    _kwargs: dict[str, Any]
+
+    def __init__(self, fn: Callable, *args: Any, **kwargs: Any) -> None:
+        if not isinstance(fn, Callable):
+            raise TypeError("`fn` must be a `Callable`")
+
+        nn.Module.__init__(self)
+        self._fn = fn
+        self._args = args
+        self._kwargs = {k: v for k, v in kwargs.items()}
+
+        @functools.wraps(fn)
+        def forward(self, *fargs, **fkwargs):
+            return self._fn(*fargs, *self._args, **(self._kwargs | fkwargs))
+
+        self.forward = types.MethodType(forward, self)
+
+    def extra_repr(self) -> str:
+        if isinstance(self._fn, types.MethodType):
+            name = self._fn.__qualname__
+        else:
+            name = self._fn.__name__
+
+        return (
+            f"{name}{', ' if self._args else ''}"
+            f"{', '.join(f'{a}' for a in self._args)}{', ' if self._kwargs else ''}"
+            f"{', '.join(f'{k}={v}' for k, v in self._kwargs.items())}"
+        )
