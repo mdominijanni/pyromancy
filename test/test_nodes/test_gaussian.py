@@ -265,7 +265,7 @@ class TestStandardGaussianNode:
             assert torch.allclose(node.value, res)
 
     @torch.no_grad()
-    def test_sample(self):
+    def test_sample_from(self):
         nshape = (None, 3)
         dshape = (5, 2, 3)
 
@@ -276,7 +276,7 @@ class TestStandardGaussianNode:
         gres = torch.Generator().manual_seed(42)
 
         sol = torch.randn(mu.shape, generator=gsol)
-        res = node.sample(mu, gres)
+        res = node.sample_from(mu, gres)
 
         assert res.shape == mu.shape
         assert res.shape == sol.shape
@@ -590,7 +590,7 @@ class TestIsotropicGaussianNode:
             assert torch.allclose(node.value, res)
 
     @torch.no_grad()
-    def test_sample(self):
+    def test_sample_from(self):
         nshape = (None, 3)
         dshape = (5, 2, 3)
 
@@ -605,7 +605,7 @@ class TestIsotropicGaussianNode:
         gres = torch.Generator().manual_seed(42)
 
         sol = std * torch.randn(mu.shape, generator=gsol)
-        res = node.sample(mu, gres)
+        res = node.sample_from(mu, gres)
 
         assert res.shape == mu.shape
         assert res.shape == sol.shape
@@ -919,7 +919,7 @@ class TestFactorizedGaussianNode:
             assert torch.allclose(node.value, res)
 
     @torch.no_grad()
-    def test_sample(self):
+    def test_sample_from(self):
         nshape = (None, 3)
         bshape = (1, 3)
         dshape = (5, 2, 3)
@@ -938,7 +938,7 @@ class TestFactorizedGaussianNode:
         sample = std * torch.randn(mu_.shape, generator=gsol)
 
         sol = node.shapeobj.disperse(sample, pragma)
-        res = node.sample(mu, gres)
+        res = node.sample_from(mu, gres)
 
         assert res.shape == mu.shape
         assert res.shape == sol.shape
@@ -1257,7 +1257,7 @@ class TestMultivariateGaussianNode:
             assert torch.allclose(node.value, res)
 
     @torch.no_grad()
-    def test_sample(self):
+    def test_sample_from(self):
         nshape = (None, 3)
         bshape = (1, 3)
         dshape = (5, 2, 3)
@@ -1278,7 +1278,7 @@ class TestMultivariateGaussianNode:
         sample = L @ torch.randn(mu_.shape, generator=gsol).t()
 
         sol = node.shapeobj.disperse(sample.t(), pragma)
-        res = node.sample(mu, gres)
+        res = node.sample_from(mu, gres)
 
         assert res.shape == mu.shape
         assert res.shape == sol.shape

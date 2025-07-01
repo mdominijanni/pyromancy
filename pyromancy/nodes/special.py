@@ -38,7 +38,7 @@ class BiasNode(Node):
 
     def reset(self) -> None:
         r"""Resets transient node state."""
-        self._initshape = self.bias.shape
+        self._initshape = self.bias.unsqueeze(0).shape
 
     def init(self, value: torch.Tensor) -> torch.Tensor:
         r"""Initializes the node's returned bias with a new shape.
@@ -62,19 +62,20 @@ class BiasNode(Node):
 
         return self.bias.unsqueeze(0).expand(self._initshape)
 
-    def error(self, pred: torch.Tensor) -> torch.Tensor:
-        r"""Error between the prediction and node state.
+    def error_from(self, value: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
+        r"""Computes elementwise error for a prediction of the node state and its presumed state.
 
         .. math::
             \boldsymbol{\varepsilon} = \mathbf{b} - \boldsymbol{\mu}
 
         Args:
+            value (~torch.Tensor): presumed value of the node state :math:`\mathbf{b}`.
             pred (~torch.Tensor): predicted bias :math:`\boldsymbol{\mu}`.
 
         Returns:
             ~torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
         """
-        return self.bias - pred
+        return value - pred
 
     def forward(self, inputs: torch.Tensor, **kwargs) -> torch.Tensor:
         r"""Expands bias tensor for the network.
@@ -160,19 +161,20 @@ class FixedNode(Node):
 
         return self.value
 
-    def error(self, pred: torch.Tensor) -> torch.Tensor:
-        r"""Error between the prediction and node state.
+    def error_from(self, value: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
+        r"""Computes elementwise error for a prediction of the node state and its presumed state.
 
         .. math::
             \boldsymbol{\varepsilon} = \mathbf{z} - \boldsymbol{\mu}
 
         Args:
+            value (~torch.Tensor): presumed value of the node state :math:`\mathbf{z}`.
             pred (~torch.Tensor): predicted value :math:`\boldsymbol{\mu}`.
 
         Returns:
             ~torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
         """
-        return self.value - pred
+        return value - pred
 
     def forward(self, inputs: torch.Tensor, **kwargs) -> torch.Tensor:
         r"""Computes a forward pass on the node.
@@ -258,19 +260,20 @@ class FloatNode(Node):
 
         return self.value
 
-    def error(self, pred: torch.Tensor) -> torch.Tensor:
-        r"""Error between the prediction and node state.
+    def error_from(self, value: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
+        r"""Computes elementwise error for a prediction of the node state and its presumed state.
 
         .. math::
             \boldsymbol{\varepsilon} = \mathbf{z} - \boldsymbol{\mu}
 
         Args:
+            value (~torch.Tensor): presumed value of the node state :math:`\mathbf{z}`.
             pred (~torch.Tensor): predicted value :math:`\boldsymbol{\mu}`.
 
         Returns:
             ~torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
         """
-        return self.value - pred
+        return value - pred
 
     def forward(self, inputs: torch.Tensor, **kwargs) -> torch.Tensor:
         r"""Computes a forward pass on the node.

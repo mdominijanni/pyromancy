@@ -110,6 +110,18 @@ class Node(nn.Module, ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def error_from(self, value: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
+        r"""Computes elementwise error for a prediction of the node state and its presumed state.
+
+        Args:
+            value (~torch.Tensor): presumed value of the node state.
+            pred (~torch.Tensor): prediction of the node state.
+
+        Returns:
+            ~torch.Tensor: elementwise error between its presumed state and a prediction.
+        """
+        raise NotImplementedError
+
     def error(self, pred: torch.Tensor) -> torch.Tensor:
         r"""Computes elementwise error for a prediction of the node state.
 
@@ -118,11 +130,8 @@ class Node(nn.Module, ABC):
 
         Returns:
             ~torch.Tensor: elementwise error between the state and a prediction.
-
-        Raises:
-            NotImplementedError: must be implemented by subclasses.
         """
-        raise NotImplementedError
+        return self.error_from(self.activity, pred)
 
     @abstractmethod
     def forward(self, inputs: torch.Tensor, **kwargs) -> torch.Tensor:
@@ -211,6 +220,21 @@ class PredictiveNode(Node, ABC):
         return self.value
 
     @abstractmethod
+    def energy_from(self, value: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
+        r"""Computes variational free energy for a prediction of the node state and its presumed state.
+
+        Args:
+            value (~torch.Tensor): presumed value of the node state.
+            pred (~torch.Tensor): prediction of the node state.
+
+        Returns:
+            ~torch.Tensor: variational free energy between its presumed state and a prediction.
+
+        Raises:
+            NotImplementedError: must be implemented by subclasses.
+        """
+        raise NotImplementedError
+
     def energy(self, pred: torch.Tensor) -> torch.Tensor:
         r"""Computes variational free energy for a prediction of the node state.
 
@@ -219,11 +243,8 @@ class PredictiveNode(Node, ABC):
 
         Returns:
             ~torch.Tensor: variational free energy between the state and a prediction.
-
-        Raises:
-            NotImplementedError: must be implemented by subclasses.
         """
-        raise NotImplementedError
+        return self.energy_from(self.activity, pred)
 
     def forward(self, inputs: torch.Tensor, **kwargs) -> torch.Tensor:
         r"""Computes a forward pass on the node.
@@ -255,7 +276,7 @@ class VariationalNode(PredictiveNode, ABC):
         PredictiveNode.__init__(self, *shape)
 
     @abstractmethod
-    def sample(
+    def sample_from(
         self, value: torch.Tensor, generator: torch.Generator | None = None
     ) -> torch.Tensor:
         r"""Samples from the learned variational distribution.
@@ -273,3 +294,15 @@ class VariationalNode(PredictiveNode, ABC):
             ~torch.Tensor: samples from the variational distribution.
         """
         raise NotImplementedError
+
+    def sample(self, generator: torch.Generator | None = None) -> torch.Tensor:
+        r"""Samples from the learned variational distribution using the node state.
+
+        Args:
+            generator (~torch.Generator | None, optional): pseudorandom number generator
+                for sampling. Defaults to None.
+
+        Returns:
+            ~torch.Tensor: samples from the variational distribution.
+        """
+        return self.sample_from(self.activity, generator=generator)

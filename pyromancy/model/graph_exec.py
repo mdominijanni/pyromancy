@@ -125,7 +125,7 @@ class ResolutionStrategy(Enum):
 
 
 class Trace:
-    r"""Traces an execution sequence for a digraph given some initial nodes.
+    r"""Traces an execution sequence for a digraph from initial nodes.
 
     Args:
         spec (GraphSpec): object containing the digraph and node order.
@@ -337,7 +337,7 @@ class GraphExecutor(nn.Module, ABC):
     def required_hints(self) -> KeysView[str]:
         return self._hinted.keys()
 
-    def get_named_estep_params(
+    def named_infer_params(
         self,
         exclude_initial: bool = True,
         remove_duplicate=True,
@@ -374,11 +374,11 @@ class GraphExecutor(nn.Module, ABC):
             )
         )
 
-    def get_estep_params(self, exclude_initial: bool = True) -> Iterator[nn.Parameter]:
-        for _, p in self.get_named_estep_params(exclude_initial, True):
+    def infer_params(self, exclude_initial: bool = True) -> Iterator[nn.Parameter]:
+        for _, p in self.named_infer_params(exclude_initial, True):
             yield p
 
-    def get_named_mstep_params(
+    def named_learn_params(
         self,
         exclude_initial: bool = False,
         remove_duplicate=True,
@@ -421,8 +421,8 @@ class GraphExecutor(nn.Module, ABC):
             )
         )
 
-    def get_mstep_params(self, exclude_initial: bool = False) -> Iterator[nn.Parameter]:
-        for _, p in self.get_named_mstep_params(exclude_initial, True):
+    def learn_params(self, exclude_initial: bool = False) -> Iterator[nn.Parameter]:
+        for _, p in self.named_learn_params(exclude_initial, True):
             yield p
 
     def reset(self) -> None:
@@ -440,7 +440,7 @@ class GraphExecutor(nn.Module, ABC):
         raise NotImplementedError
 
 
-class ForwardExecutor(GraphExecutor):
+class PredictionExecutor(GraphExecutor):
 
     _trace: Trace
 

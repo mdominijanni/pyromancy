@@ -95,22 +95,24 @@ class StandardGaussianNode(AbstractGaussianNode):
     def covariance(self, value: float | torch.Tensor) -> None:
         raise RuntimeError(f"{type(self).__name__} has fixed covariance")
 
-    def error(self, pred: torch.Tensor) -> torch.Tensor:
-        r"""Error between the prediction and node state.
+    def error_from(self, value: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
+        r"""Computes elementwise error for a prediction of the node state and its presumed state.
 
         .. math::
             \boldsymbol{\varepsilon} = \mathbf{z} - \boldsymbol{\mu}
 
         Args:
-            pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
+            value (~torch.Tensor): presumed value of the node state :math:`\mathbf{z}`.
+            pred (~torch.Tensor): predicted value :math:`\boldsymbol{\mu}`.
 
         Returns:
             ~torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
         """
-        return self.value - pred
 
-    def energy(self, pred: torch.Tensor) -> torch.Tensor:
-        r"""Variational free energy with respect to the prediction.
+        return value - pred
+
+    def energy_from(self, value: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
+        r"""Computes variational free energy for a prediction of the node state and its presumed state.
 
         .. math::
             \begin{aligned}
@@ -121,15 +123,16 @@ class StandardGaussianNode(AbstractGaussianNode):
             \end{aligned}
 
         Args:
+            value (~torch.Tensor): presumed value of the node state :math:`\mathbf{z}`.
             pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
             ~torch.Tensor: variational free energy :math:`\mathcal{F}`.
         """
-        diff = (self.value - pred).flatten(1)
+        diff = (value - pred).flatten(1)
         return 0.5 * (diff.unsqueeze(1) @ diff.unsqueeze(2)).flatten()
 
-    def sample(
+    def sample_from(
         self, value: torch.Tensor, generator: torch.Generator | None = None
     ) -> torch.Tensor:
         r"""Samples from the learned variational distribution.
@@ -256,22 +259,23 @@ class IsotropicGaussianNode(AbstractGaussianNode):
                         f"{self.size}, or a {self.size} x {self.size} matrix"
                     )
 
-    def error(self, pred: torch.Tensor) -> torch.Tensor:
-        r"""Error between the prediction and node state.
+    def error_from(self, value: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
+        r"""Computes elementwise error for a prediction of the node state and its presumed state.
 
         .. math::
             \boldsymbol{\varepsilon} = \frac{\mathbf{z} - \boldsymbol{\mu}}{\sigma}
 
         Args:
+            value (~torch.Tensor): presumed value of the node state :math:`\mathbf{z}`.
             pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
             ~torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
         """
-        return (self.value - pred) / self.logvar.exp()
+        return (value - pred) / self.logvar.exp()
 
-    def energy(self, pred: torch.Tensor) -> torch.Tensor:
-        r"""Variational free energy with respect to the prediction.
+    def energy_from(self, value: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
+        r"""Computes variational free energy for a prediction of the node state and its presumed state.
 
         .. math::
             \begin{aligned}
@@ -284,17 +288,18 @@ class IsotropicGaussianNode(AbstractGaussianNode):
             \end{aligned}
 
         Args:
+            value (~torch.Tensor): presumed value of the node state :math:`\mathbf{z}`.
             pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
             ~torch.Tensor: variational free energy :math:`\mathcal{F}`.
         """
-        diff = (self.value - pred).flatten(1)
+        diff = (value - pred).flatten(1)
         y = diff / self.logvar.exp()
         logdet = self.size * self.logvar
         return 0.5 * (diff.unsqueeze(1) @ y.unsqueeze(2) + logdet).flatten()
 
-    def sample(
+    def sample_from(
         self, value: torch.Tensor, generator: torch.Generator | None = None
     ) -> torch.Tensor:
         r"""Samples from the learned variational distribution.
@@ -427,24 +432,25 @@ class FactorizedGaussianNode(AbstractGaussianNode):
                         f"{self.size}, or a {self.size} x {self.size} matrix"
                     )
 
-    def error(self, pred: torch.Tensor) -> torch.Tensor:
-        r"""Error between the prediction and node state.
+    def error_from(self, value: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
+        r"""Computes elementwise error for a prediction of the node state and its presumed state.
 
         .. math::
             \boldsymbol{\varepsilon} =
             (\mathbf{z} - \boldsymbol{\mu}) \oslash \boldsymbol{\sigma}
 
         Args:
+            value (~torch.Tensor): presumed value of the node state :math:`\mathbf{z}`.
             pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
             ~torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
         """
-        diff, pragma = self.shapeobj.coalesce(self.value - pred)
+        diff, pragma = self.shapeobj.coalesce(value - pred)
         return self.shapeobj.disperse(diff / self.logvar.exp(), pragma)
 
-    def energy(self, pred: torch.Tensor) -> torch.Tensor:
-        r"""Variational free energy with respect to the prediction.
+    def energy_from(self, value: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
+        r"""Computes variational free energy for a prediction of the node state and its presumed state.
 
         .. math::
             \mathcal{F} = \frac{1}{2} \left(
@@ -453,12 +459,13 @@ class FactorizedGaussianNode(AbstractGaussianNode):
             + N \log \sigma\right)
 
         Args:
+            value (~torch.Tensor): presumed value of the node state :math:`\mathbf{z}`.
             pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
             ~torch.Tensor: variational free energy :math:`\mathcal{F}`.
         """
-        diff, pragma = self.shapeobj.coalesce(self.value - pred)
+        diff, pragma = self.shapeobj.coalesce(value - pred)
         y = diff / self.logvar.exp()
 
         diff = self.shapeobj.disperse(diff, pragma).flatten(1)
@@ -467,7 +474,7 @@ class FactorizedGaussianNode(AbstractGaussianNode):
 
         return 0.5 * (diff.unsqueeze(1) @ y.unsqueeze(2) + logdet).flatten()
 
-    def sample(
+    def sample_from(
         self, value: torch.Tensor, generator: torch.Generator | None = None
     ) -> torch.Tensor:
         r"""Samples from the learned variational distribution.
@@ -621,19 +628,20 @@ class MultivariateGaussianNode(AbstractGaussianNode):
                         f"{self.size}, or a {self.size} x {self.size} matrix"
                     )
 
-    def error(self, pred: torch.Tensor) -> torch.Tensor:
-        r"""Error between the prediction and node state.
+    def error_from(self, value: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
+        r"""Computes elementwise error for a prediction of the node state and its presumed state.
 
         .. math::
             \boldsymbol{\varepsilon} = \boldsymbol{\Sigma}^{-1} (\mathbf{z} - \boldsymbol{\mu})^\intercal
 
         Args:
+            value (~torch.Tensor): presumed value of the node state :math:`\mathbf{z}`.
             pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
             ~torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
         """
-        diff, pragma = self.shapeobj.coalesce(self.value - pred)
+        diff, pragma = self.shapeobj.coalesce(value - pred)
         L = self._cholesky_factor_l()
 
         u = torch.linalg.solve_triangular(L, diff.t(), upper=False)
@@ -641,8 +649,8 @@ class MultivariateGaussianNode(AbstractGaussianNode):
 
         return self.shapeobj.disperse(y.t(), pragma)
 
-    def energy(self, pred: torch.Tensor) -> torch.Tensor:
-        r"""Variational free energy with respect to the prediction.
+    def energy_from(self, value: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
+        r"""Computes variational free energy for a prediction of the node state and its presumed state.
 
         .. math::
             \mathcal{F} = \frac{1}{2} \left(
@@ -651,12 +659,13 @@ class MultivariateGaussianNode(AbstractGaussianNode):
             + \log \lvert\boldsymbol{\Sigma}\rvert \right)
 
         Args:
+            value (~torch.Tensor): presumed value of the node state :math:`\mathbf{z}`.
             pred (~torch.Tensor): predicted distribution mean :math:`\boldsymbol{\mu}`.
 
         Returns:
             ~torch.Tensor: variational free energy :math:`\mathcal{F}`.
         """
-        diff, pragma = self.shapeobj.coalesce(self.value - pred)
+        diff, pragma = self.shapeobj.coalesce(value - pred)
         L = self._cholesky_factor_l()
 
         u = torch.linalg.solve_triangular(L, diff.t(), upper=False)
@@ -668,7 +677,7 @@ class MultivariateGaussianNode(AbstractGaussianNode):
 
         return 0.5 * (diff.unsqueeze(1) @ y.unsqueeze(2) + logdet).flatten()
 
-    def sample(
+    def sample_from(
         self, value: torch.Tensor, generator: torch.Generator | None = None
     ) -> torch.Tensor:
         r"""Samples from the learned variational distribution.

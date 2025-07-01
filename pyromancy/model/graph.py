@@ -7,7 +7,7 @@ import networkx as nx
 import torch
 import torch.nn as nn
 
-from ..infra import LambdaModule
+from ..infra import LambdaModule, TypedModuleDict
 from ..nodes import Node, PredictiveNode
 
 
@@ -43,6 +43,15 @@ class GraphSpec[T: Hashable]:
             raise RuntimeError(
                 "`order` must contain the exactly the same nodes as `graph`"
             )
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, GraphSpec):
+            return False
+        if self._graph.nodes != other._graph.nodes:
+            return False
+        if self._graph.edges != other._graph.edges:
+            return False
+        return self._order == other._order
 
     @property
     def graph(self) -> nx.DiGraph:
@@ -140,6 +149,90 @@ class GraphSpec[T: Hashable]:
         )
 
 
+class GraphNodeView:
+    r"""Intractable view of a Node inside of a Graph.
+
+    Args:
+        node (Node): predictive coding node.
+        join (~torch.nn.Module): join operation for inputs.
+        predecessors (Sequence[tuple[Node, ~torch.nn.Module]]): tuples of
+            ``(predecessor, edge)`` providing input to ``node``.
+
+    Raises:
+        TypeError: ``node`` must be of type :py:class:`~pyromancy.nodes.Node`.
+        TypeError: ``join`` must be of type :py:class:`~torch.nn.Module`.
+        TypeError: all elements of ``predecessors`` must be a ``tuple[Node, nn.Module]``.
+    """
+
+    _node: Node
+    _join: nn.Module
+    _predecessors: list[tuple[Node, nn.Module]]
+
+    def __init__(
+        self,
+        node: Node,
+        join: nn.Module,
+        predecessors: Sequence[tuple[Node, nn.Module]],
+    ) -> None:
+        if not isinstance(node, Node):
+            raise TypeError("`node` must be a `Node`")
+        if not isinstance(join, nn.Module):
+            raise TypeError("`join` must be an `nn.Module`")
+
+        self._node = node
+        self._join = join
+        self._predecessors = []
+
+        for pred, edge in predecessors:
+            if not isinstance(pred, Node) or not isinstance(edge, nn.Module):
+                raise TypeError(
+                    "elements of `predecessors` must be a `tuple[Node, nn.Module]`"
+                )
+            self._predecessors.append((pred, edge))
+
+    @property
+    def node(self) -> Node:
+        r"""Returns the predictive coding node.
+
+        Returns:
+            Node: predictive coding node.
+        """
+        return self._node
+
+    @property
+    def prediction(self) -> torch.Tensor:
+        r"""Returns the prediction for the value of the node.
+
+        Returns:
+            torch.Tensor: prediction for the value of the node.
+        """
+        return self._join([edge(node.activity) for node, edge in self._predecessors])
+
+    @property
+    def error(self) -> torch.Tensor:
+        r"""Returns the error between the prediction and the value of the node.
+
+        Returns:
+            torch.Tensor: error between the prediction and the value of the node.
+        """
+        return self._node.error(self.prediction)
+
+    @property
+    def energy(self) -> torch.Tensor:
+        r"""Returns the energy between the prediction and the value of the node.
+
+        Raises:
+            TypeError: only nodes of type :py:class:`~pyromancy.nodes.PredictionNode`
+                support computing energy.
+
+        Returns:
+            torch.Tensor: energy between the prediction and the value of the node.
+        """
+        if not isinstance(self._node, PredictiveNode):
+            raise TypeError("only `PredictionNode` nodes support `energy()`")
+        return self._node.energy(self.prediction)
+
+
 class Graph(nn.Module):
     r"""Predictive coding graph.
 
@@ -164,9 +257,9 @@ class Graph(nn.Module):
 
     _spec: GraphSpec
 
-    nodes: nn.ModuleDict
-    edges: nn.ModuleDict
-    joins: nn.ModuleDict
+    nodes: TypedModuleDict[Node]
+    edges: TypedModuleDict[nn.Module]
+    joins: TypedModuleDict[nn.Module]
 
     def __init__(
         self,
@@ -186,9 +279,9 @@ class Graph(nn.Module):
         _graph = nx.DiGraph()
         _order = []
 
-        self.nodes = nn.ModuleDict()
-        self.edges = nn.ModuleDict()
-        self.joins = nn.ModuleDict()
+        self.nodes = TypedModuleDict(narrowing=Node)
+        self.edges = TypedModuleDict()
+        self.joins = TypedModuleDict()
 
         # add nodes
         for name, node in nodes.items():
@@ -210,7 +303,7 @@ class Graph(nn.Module):
             if not all(n in self.nodes for n in pair):
                 raise KeyError(f"{pair} in `edges` specifies invalid an invalid `Node`")
 
-            self.edges[f"{pair[0]}, {pair[1]}"] = edge
+            self.edges[f"{pair[0]} -> {pair[1]}"] = edge
             _graph.add_edge(pair[0], pair[1])
 
         # add joins
@@ -221,19 +314,34 @@ class Graph(nn.Module):
             if name not in self.nodes:
                 raise KeyError(f"key '{name}' in `joins` is not specified in `nodes`")
 
+            # create join automatically
             if join is None:
+                # manual join specification required for multiple inputs
                 if _graph.in_degree(name) > 1:  # type: ignore
                     raise RuntimeError(
                         f"`joins` must specify a join for node {name} "
                         f"with indegree {_graph.in_degree(name)}"
                     )
-                self.joins[name] = LambdaModule(itemgetter(0))
+
+                # trivial retrieval for single input
+                if _graph.in_degree(name) == 1:
+                    self.joins[name] = LambdaModule(itemgetter(0))
+
+                # identity placeholder for nodes without parents
+                else:
+                    self.joins[name] = nn.Identity()
+
+            # ensure the join is a callable
             elif not isinstance(join, Callable):
                 raise TypeError(
                     f"item with key '{name}' in `joins` is not a `Callable`"
                 )
+
+            # wrap with a LambdaModule if its not a module
             elif not isinstance(join, nn.Module):
                 self.joins[name] = LambdaModule(join)
+
+            # use directly if it is a module
             else:
                 self.joins[name] = join
 
@@ -248,14 +356,24 @@ class Graph(nn.Module):
         self._spec = GraphSpec(_graph, _order)
 
     @property
-    def topology(self) -> nx.DiGraph:
-        return self._spec.graph
+    def spec(self) -> GraphSpec:
+        return self._spec
+
+    def nodeview(self, node: str) -> GraphNodeView:
+        return GraphNodeView(
+            self.node(node),
+            self.join(node),
+            [
+                (self.nodes(pred), self.edges(pred, node))
+                for pred in self._spec.predecessors(node)
+            ],
+        )
 
     def node(self, node: str) -> Node:
         return self.nodes[node]  # type: ignore
 
     def edge(self, source: str, target: str) -> nn.Module:
-        return self.edges[source + ", " + target]
+        return self.edges[source + " -> " + target]
 
     def join(self, node: str) -> nn.Module:
         return self.joins[node]
@@ -265,34 +383,27 @@ class Graph(nn.Module):
         for node in self.nodes.values():  # type: ignore
             node.reset()
 
-    def predof(self, node: str) -> torch.Tensor:
-        inputs = []
-        for source in self._spec.predecessors(node):
-            inputs.append(self.edge(source, node)(self.nodes[source].activity))
-        return self.join(node)(inputs)
-
-    def errorof(self, node: str) -> torch.Tensor:
-        return self.node(node).error(self.predof(node))
-
-    def energyof(self, node: str) -> torch.Tensor:
-        nodeobj = self.node(node)
-        if isinstance(nodeobj, PredictiveNode):
-            return nodeobj.energy(self.predof(node))
-        else:
-            raise TypeError(
-                "energy can only be computed on nodes of type `PredictiveNode`"
-            )
-
     def energy(self) -> torch.Tensor:
-        return ein.reduce(
-            [
-                self.energyof(node)
-                for node in self.nodes
-                if isinstance(node, PredictiveNode)
-            ],
-            "n ... -> ...",
-            "sum",
-        )
+        energy = []
+
+        # iterate over the "target" nodes
+        for tgt, node in self.nodes.items():
+
+            # get ordered predecessors
+            predecessors = self._spec.predecessors(tgt)
+
+            # skip nodes where energy cannot be computed
+            if not isinstance(node, PredictiveNode) or not predecessors:
+                continue
+
+            # compute the energy from joint prediction
+            pred = self.join(tgt)(
+                [self.edge(src, tgt)(self.node(src).activity) for src in predecessors]
+            )
+            energy.append(node.energy(pred))
+
+        # sum energy over nodes
+        return ein.reduce(energy, "n ... -> ...", "sum")
 
     def init(self, *args, **kwargs) -> None:
         raise RuntimeError(

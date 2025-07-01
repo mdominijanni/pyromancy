@@ -1,17 +1,18 @@
-from .graph import Graph, GraphSpec
+from .graph import Graph, GraphNodeView, GraphSpec
 from .graph_exec import (
-    ForwardExecutor,
     GraphExecutor,
+    PredictionExecutor,
     ResolutionStrategy,
     Trace,
     TraversalStrategy,
 )
 
 __all__ = [
-    "GraphSpec",
     "Graph",
-    "ForwardExecutor",
+    "GraphNodeView",
+    "GraphSpec",
     "GraphExecutor",
+    "PredictionExecutor",
     "ResolutionStrategy",
     "Trace",
     "TraversalStrategy",
