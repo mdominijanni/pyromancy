@@ -1,8 +1,8 @@
 import functools
 import math
 import types
-from collections.abc import Callable, Iterator
-from typing import Any, overload
+from collections.abc import Mapping, MutableMapping, Callable, Iterator
+from typing import Any, Type, overload
 
 import einops as ein
 import torch
@@ -255,3 +255,68 @@ class LambdaModule(nn.Module):
             f"{', '.join(f'{a}' for a in self._args)}{', ' if self._kwargs else ''}"
             f"{', '.join(f'{k}={v}' for k, v in self._kwargs.items())}"
         )
+
+
+class TypedModuleDict[T: nn.Module](nn.Module, MutableMapping):
+    r"""Holds submodules of a specific type in a dictionary.
+
+    This class is nearly identical to :py:class:`~torch.nn.ModuleDict`, but it allows
+    for the type of permitted submodules to be narrowed.
+
+    Args:
+        modules (Mapping[str, T] | None, optional): initial modules to add along with
+            their names. Defaults to None.
+        narrowing (Type[T], optional): subclass to narrow inserted modules to.
+            Defaults to :py:class:`~torch.nn.Module`.
+
+    Raises:
+        TypeError: ``narrowing`` must specify a type of :py:class:`~torch.nn.Module`.
+    """
+
+    _modules: dict[str, T]  # type: ignore[assignment]
+    _modtype: Type[T]
+
+    def __init__(
+        self, modules: Mapping[str, T] | None = None, narrowing: Type[T] = nn.Module
+    ) -> None:
+        if not issubclass(narrowing, nn.Module):
+            raise TypeError(
+                f"the type specified by `narrowing`, `{narrowing.__name__}` "
+                f"must be a subclass of `{nn.Module.__name__}`"
+            )
+
+        nn.Module.__init__(self)
+        self._modtype = narrowing
+        if modules is not None:
+            self.update(modules)
+
+    def __contains__(self, key: object) -> bool:
+        return key in self._modules
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, TypedModuleDict | nn.ModuleDict):
+            return self._modules == other._modules
+        else:
+            return False
+
+    def __getitem__(self, key: str) -> T:
+        return self._modules[key]
+
+    def __setitem__(self, key: str, module: T) -> None:
+        if not isinstance(key, str):
+            raise TypeError(f"`key` of type `{type(key).__name__}` must be a `str`")
+        if not isinstance(module, self._modtype):
+            raise TypeError(
+                f"`module` of type `{type(module).__name__}` "
+                f"must be an instance of `{self._modtype.__name__}`"
+            )
+        self.add_module(key, module)
+
+    def __delitem__(self, key: str) -> None:
+        del self._modules[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._modules)
+
+    def __len__(self) -> int:
+        return len(self._modules)

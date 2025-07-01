@@ -239,7 +239,7 @@ class Graph(nn.Module):
 
         # check for graph connectivity
         _ncomp = nx.number_weakly_connected_components(_graph)
-        if _ncomp > 0:
+        if _ncomp > 1:
             raise RuntimeError(
                 f"graph can only have 1 weakly connected component, but it has {_ncomp}"
             )

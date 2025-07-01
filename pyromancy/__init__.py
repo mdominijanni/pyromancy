@@ -1,5 +1,5 @@
 from . import nodes
-from .infra import LambdaModule, Shape
+from .infra import LambdaModule, Shape, TypedModuleDict
 from .utils import (
     eparameters,
     get_estep_params,
@@ -11,8 +11,9 @@ from .utils import (
 
 __all__ = [
     # core module
-    "Shape",
     "LambdaModule",
+    "Shape",
+    "TypedModuleDict",
     "eparameters",
     "mparameters",
     "get_estep_params",
