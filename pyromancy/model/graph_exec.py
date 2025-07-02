@@ -399,6 +399,7 @@ class GraphExecutor(nn.Module):
 
         nn.Module.__init__(self)
 
+        self.graph = graph
         self._trace = trace
 
     @property
@@ -522,7 +523,7 @@ class GraphExecutor(nn.Module):
                     remove_duplicate=remove_duplicate,
                 ),
                 get_named_mstep_params(
-                    self.graph.nodes,
+                    self.graph.joins,
                     default=True,
                     exclude=exclude,
                     prefix="graph.joins",
