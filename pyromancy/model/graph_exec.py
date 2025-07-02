@@ -409,7 +409,7 @@ class GraphExecutor(nn.Module):
     def required_hints(self) -> KeysView[str]:
         return self._trace.required
 
-    def named_infer_params(
+    def named_estep_params(
         self,
         exclude_initial: bool = True,
         manual_exclude: Sequence[nn.Parameter | nn.Module] | None = None,
@@ -466,15 +466,15 @@ class GraphExecutor(nn.Module):
             )
         )
 
-    def infer_params(
+    def estep_params(
         self,
         exclude_initial: bool = True,
         manual_exclude: Sequence[nn.Parameter | nn.Module] | None = None,
     ) -> Iterator[nn.Parameter]:
-        for _, p in self.named_infer_params(exclude_initial, manual_exclude, True):
+        for _, p in self.named_estep_params(exclude_initial, manual_exclude, True):
             yield p
 
-    def named_train_params(
+    def named_mstep_params(
         self,
         exclude_initial: bool = False,
         manual_exclude: Sequence[nn.Parameter | nn.Module] | None = None,
@@ -531,12 +531,12 @@ class GraphExecutor(nn.Module):
             )
         )
 
-    def train_params(
+    def mstep_params(
         self,
         exclude_initial: bool = False,
         manual_exclude: Sequence[nn.Parameter | nn.Module] | None = None,
     ) -> Iterator[nn.Parameter]:
-        for _, p in self.named_train_params(exclude_initial, manual_exclude, True):
+        for _, p in self.named_mstep_params(exclude_initial, manual_exclude, True):
             yield p
 
     def reset(self) -> None:

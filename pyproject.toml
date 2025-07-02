@@ -21,7 +21,12 @@ classifiers = [
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-dependencies = ["einops>=0.7", "torch>=2.7.0", "torchvision>=0.22.0"]
+dependencies = [
+  "einops>=0.7",
+  "torch>=2.7.0",
+  "torchvision>=0.22.0",
+  "networkx>=3.5.0",
+]
 
 [project.urls]
 Source = "https://github.com/mdominijanni/pyromancy"
