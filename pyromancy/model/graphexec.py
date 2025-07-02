@@ -544,9 +544,14 @@ class GraphExecutor(nn.Module):
         self.graph.reset()
 
     def init(
-        self, initial: dict[str, torch.Tensor], hints: dict[str, torch.Tensor]
+        self,
+        initial: dict[str, torch.Tensor],
+        hints: dict[str, torch.Tensor] | None = None,
     ) -> None:
-        for target, ops in ChainMap(*self._trace.process).items():
+        if hints is None:
+            hints = {}
+
+        for target, ops in ChainMap(*reversed(self._trace.process)).items():
             inputs = []
             for res, source in ops:
                 match res:
@@ -564,16 +569,21 @@ class GraphExecutor(nn.Module):
                         raise RuntimeError(
                             "internal trace contains an invalid ResolutionStrategy"
                         )
-                self.graph.node(target).init(self.graph.join(target)(inputs))
+            self.graph.node(target).init(self.graph.join(target)(inputs))
 
     def energy(self) -> torch.Tensor:
         return self.graph.energy()
 
     def forward(
-        self, initial: dict[str, torch.Tensor], hints: dict[str, torch.Tensor]
+        self,
+        initial: dict[str, torch.Tensor],
+        hints: dict[str, torch.Tensor] | None = None,
     ) -> dict[str, torch.Tensor]:
+        if hints is None:
+            hints = {}
+
         output = {}
-        for target, ops in ChainMap(*self._trace.process).items():
+        for target, ops in ChainMap(*reversed(self._trace.process)).items():
             inputs = []
             for res, source in ops:
                 match res:
@@ -587,8 +597,8 @@ class GraphExecutor(nn.Module):
                         raise RuntimeError(
                             "internal trace contains an invalid ResolutionStrategy"
                         )
-                output[target] = self.graph.node(target)(
-                    self.graph.join(target)(inputs)
-                )
+            output[target] = self.graph.node(target)(
+                self.graph.join(target)(inputs)
+            )
 
         return output

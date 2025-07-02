@@ -348,12 +348,9 @@ class Graph(nn.Module):
                     )
 
                 # trivial retrieval for single input
-                if _graph.in_degree(name) == 1:
-                    self.joins[name] = LambdaModule(itemgetter(0))
-
-                # identity placeholder for nodes without parents
+                # note: for nodes w/o parents, initialization value is put into a list
                 else:
-                    self.joins[name] = nn.Identity()
+                    self.joins[name] = LambdaModule(itemgetter(0))
 
             # ensure the join is a callable
             elif not isinstance(join, Callable):

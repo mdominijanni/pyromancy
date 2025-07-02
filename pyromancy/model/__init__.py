@@ -1,5 +1,5 @@
 from .graph import Graph, GraphNodeView, GraphSpec
-from .graph_exec import GraphExecutor, GraphTrace, ResolutionStrategy, TraversalStrategy
+from .graphexec import GraphExecutor, GraphTrace, ResolutionStrategy, TraversalStrategy
 
 __all__ = [
     "Graph",
