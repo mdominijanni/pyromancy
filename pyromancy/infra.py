@@ -294,10 +294,10 @@ class TypedModuleDict[T: nn.Module](nn.Module, MutableMapping):
         return key in self._modules
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, TypedModuleDict | nn.ModuleDict):
-            return self._modules == other._modules
-        else:
-            return False
+        return self is other
+
+    def __hash__(self) -> int:
+        return object.__hash__(self)
 
     def __getitem__(self, key: str) -> T:
         return self._modules[key]
