@@ -12,6 +12,8 @@
     :toctree: generated
 
     Shape
+    LambdaModule
+    TypedModuleDict
 ```
 
 ## Utilities

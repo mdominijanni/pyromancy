@@ -1,5 +1,5 @@
+from __future__ import annotations
 import itertools
-from abc import ABC, abstractmethod
 from collections import ChainMap, deque
 from collections.abc import Hashable, Iterator, KeysView, Sequence
 from enum import Enum, auto
@@ -124,8 +124,8 @@ class ResolutionStrategy(Enum):
                 return f"Derived({node})"
 
 
-class Trace:
-    r"""Traces an execution sequence for a digraph from initial nodes.
+class GraphTrace:
+    r"""Trace of an execution sequence for a digraph from initial nodes.
 
     Args:
         spec (GraphSpec): object containing the digraph and node order.
@@ -137,9 +137,9 @@ class Trace:
             the resolution. Defaults to ``False``.
 
     Attributes:
-        process (list[dict[str, list[tuple[ResolutionStrategy, str]]]]): list of stages, where each
-            stage has a dictionary with the node to resolve as the key, and a list of the required
-            node inputs and how to resolve them.
+        process (list[dict[str, tuple[tuple[ResolutionStrategy, str], ...]]]): list of stages,
+            where each stage has a dictionary with the node to resolve as the key, and a tuple
+            of the required node inputs and how to resolve them.
 
     Raises:
         TypeError: nodes in ``ordering`` must be of type :py:class:`str`.
@@ -150,7 +150,8 @@ class Trace:
         RuntimeError: resolution for a node could not be computed (occurs for unreachable nodes).
     """
 
-    process: list[dict[str, list[tuple[ResolutionStrategy, str]]]]
+    process: list[dict[str, tuple[tuple[ResolutionStrategy, str], ...]]]
+    _spec: GraphSpec
     _initial: dict[str, None]
     _required: dict[str, None]
     _unknown: dict[str, None]
@@ -162,8 +163,11 @@ class Trace:
         traversal_strategy: TraversalStrategy = TraversalStrategy.BFS,
         skip_unreachable: bool = False,
     ) -> None:
+        # copy the graph spec
+        self._spec = spec.copy()
+
         # get a view of the graph
-        graph = spec.graph
+        graph = self._spec.graph
 
         # repackage ordering
         ordering = [
@@ -209,7 +213,7 @@ class Trace:
 
         # process initializing nodes
         self.process.append(
-            {n: [(ResolutionStrategy.INITIAL, n)] for n in unexplored.rank(0)}
+            {n: ((ResolutionStrategy.INITIAL, n),) for n in unexplored.rank(0)}
         )
         self._initial |= {n: None for n in unexplored.rank(0)}
         pruned.remove_nodes_from(unexplored.rank(0))
@@ -219,7 +223,7 @@ class Trace:
             group = {}
 
             # resolve nodes
-            for node in spec.sort_nodes(unexplored.rank(rank)):
+            for node in self._spec.sort_nodes(unexplored.rank(rank)):
                 # skip unreachable
                 if skip_unreachable and node not in reach:
                     self._unknown[node] = None
@@ -229,7 +233,7 @@ class Trace:
                 resolution = []
 
                 # check all dependencies of the node
-                for dep in spec.predecessors(node):
+                for dep in self._spec.predecessors(node):
                     # unresolved dependency
                     if pruned.has_predecessor(node, dep):
                         resolution.append((ResolutionStrategy.HINTED, dep))
@@ -247,7 +251,7 @@ class Trace:
                     )
 
                 # add node resolution to working group
-                group[node] = resolution
+                group[node] = tuple(resolution)
 
             # add the group to the explored nodes
             if not len(group) == 0:
@@ -255,6 +259,64 @@ class Trace:
 
             # mark the nodes as resolved
             pruned.remove_nodes_from(unexplored.rank(rank))
+
+    @classmethod
+    def pathfind_dag(
+        cls,
+        spec: GraphSpec,
+        initial: Sequence[str] | str,
+        traversal_strategy: TraversalStrategy = TraversalStrategy.BFS,
+        skip_unreachable: bool = False,
+    ) -> GraphTrace:
+        r"""Creates a trace for a directed acyclic graph using only the initial nodes.
+
+        Args:
+            spec (GraphSpec): object containing the DAG and node order.
+            initial (Sequence[str] | str): nodes to use as the starting point of the trace.
+            traversal_strategy (TraversalStrategy, optional): method by which the graph should
+                be traversed when testing reachability. Defaults to ``TraversalStrategy.BFS.``
+            skip_unreachable (bool, optional): if unreachable nodes should be excluded from
+                the resolution. Defaults to ``False``.
+
+        Returns:
+            GraphTrace: trace of the graph.
+
+        Raises:
+            KeyError: all nodes in ``initial`` must also be in ``spec.graph``.
+            RuntimeError: topologically sorting ``spec.graph`` failed, only DAGs
+                can be topologically sorted.
+        """
+        # get immutable view of the graph
+        graph = spec.graph
+
+        # wrap initial in a sequence if its not
+        if isinstance(initial, str):
+            initial = (initial,)
+
+        # check that nodes are valid
+        for node in initial:
+            if not graph.has_node(node):
+                raise KeyError(f"`spec.graph` has no node {node}")
+
+        # attempt to perform a topological sort
+        try:
+            ordering = {k: None for k in nx.topological_sort(graph)}
+        except nx.NetworkXUnfeasible:
+            raise RuntimeError(
+                "could not topologically sort `spec.graph`, ensure it is a DAG"
+            )
+
+        # delete initial nodes from topological ordering
+        for node in set(initial):
+            del ordering[node]
+
+        # create a trace with a manual path
+        return cls(
+            spec,
+            [initial, *ordering.keys()],
+            traversal_strategy=traversal_strategy,
+            skip_unreachable=skip_unreachable,
+        )
 
     def __repr__(self) -> str:
         indent = "  "
@@ -273,6 +335,15 @@ class Trace:
 
         disp.append(")")
         return "\n".join(disp)
+
+    @property
+    def spec(self) -> GraphSpec:
+        r"""Specification of the graph for the trace to be valid
+
+        Returns:
+            GraphSpec[str]: specification of the graph for the trace to be valid.
+        """
+        return self._spec
 
     @property
     def initial(self) -> KeysView[str]:
@@ -304,56 +375,70 @@ class Trace:
 
 @eparameters()
 @mparameters()
-class GraphExecutor(nn.Module, ABC):
+class GraphExecutor(nn.Module):
+    r"""Provides functionality to execute predictive coding graphs
+
+    Args:
+        graph (Graph): graph over which to execute.
+        trace (GraphTrace): initialization path to use when executing.
+
+    Attributes:
+        graph (Graph): the predictive coding graph being executed.
+
+    Raises:
+        RuntimeError: ``graph`` and ``trace`` have incompatible
+            :py:class:`~pyromancy.model.GraphSpec` objects.
+    """
 
     graph: Graph
-    _initial: dict[str, None]
-    _hinted: dict[str, None]
+    _trace: GraphTrace
 
-    def __init__(
-        self,
-        graph: Graph,
-        initial: Sequence[str],
-        hinted: Sequence[str],
-    ) -> None:
-        if not all(node in graph.nodes for node in initial):
-            raise RuntimeError("`initial` contains nodes not specified in `graph`")
-        if not all(node in graph.nodes for node in initial):
-            raise RuntimeError("`hinted` contains nodes not specified in `graph`")
-        if any(node in initial for node in hinted):
-            raise RuntimeError("`initial` and `hinted` must be mutually exclusive")
+    def __init__(self, graph: Graph, trace: GraphTrace) -> None:
+        if graph.spec != trace.spec:
+            raise RuntimeError("provided `graph` and `trace` are incompatible")
 
         nn.Module.__init__(self)
 
-        self.graph = graph
-        self._initial = {node: None for node in initial}
-        self._hinted = {node: None for node in hinted}
+        self._trace = trace
 
     @property
     def required_inits(self) -> KeysView[str]:
-        return self._initial.keys()
+        return self._trace.initial
 
     @property
     def required_hints(self) -> KeysView[str]:
-        return self._hinted.keys()
+        return self._trace.required
 
     def named_infer_params(
         self,
         exclude_initial: bool = True,
+        manual_exclude: Sequence[nn.Parameter | nn.Module] | None = None,
         remove_duplicate=True,
     ) -> Iterator[tuple[str, nn.Parameter]]:
-        if exclude_initial:
-            exclude = [
-                node
-                for name, node in self.graph.nodes.items()
-                if name not in self._initial
-            ] + [
-                join
-                for name, join in self.graph.joins.items()
-                if name not in self._initial
-            ]
-        else:
+        # set manual exclusions
+        if manual_exclude is None:
             exclude = []
+        else:
+            exclude = [*manual_exclude]
+
+        # add initial exclusions
+        if exclude_initial:
+            g = self.graph.spec.graph
+            exclude += [
+                self.graph.node(node)
+                for node in g.nodes
+                if node not in self._trace.initial
+            ]
+            exclude += [
+                self.graph.edge(src, tgt)
+                for src, tgt in g.edges
+                if src not in self._trace.initial and tgt not in self._trace.initial
+            ]
+            exclude += [
+                self.graph.join(node)
+                for node in g.nodes
+                if node not in self._trace.initial
+            ]
 
         return iter(
             itertools.chain(
@@ -365,7 +450,14 @@ class GraphExecutor(nn.Module, ABC):
                     remove_duplicate=remove_duplicate,
                 ),
                 get_named_estep_params(
-                    self.graph.nodes,
+                    self.graph.edges,
+                    default=False,
+                    exclude=exclude,
+                    prefix="graph.edges",
+                    remove_duplicate=remove_duplicate,
+                ),
+                get_named_estep_params(
+                    self.graph.joins,
                     default=False,
                     exclude=exclude,
                     prefix="graph.joins",
@@ -374,27 +466,44 @@ class GraphExecutor(nn.Module, ABC):
             )
         )
 
-    def infer_params(self, exclude_initial: bool = True) -> Iterator[nn.Parameter]:
-        for _, p in self.named_infer_params(exclude_initial, True):
+    def infer_params(
+        self,
+        exclude_initial: bool = True,
+        manual_exclude: Sequence[nn.Parameter | nn.Module] | None = None,
+    ) -> Iterator[nn.Parameter]:
+        for _, p in self.named_infer_params(exclude_initial, manual_exclude, True):
             yield p
 
-    def named_learn_params(
+    def named_train_params(
         self,
         exclude_initial: bool = False,
+        manual_exclude: Sequence[nn.Parameter | nn.Module] | None = None,
         remove_duplicate=True,
     ) -> Iterator[tuple[str, nn.Parameter]]:
-        if exclude_initial:
-            exclude = [
-                node
-                for name, node in self.graph.nodes.items()
-                if name not in self._initial
-            ] + [
-                join
-                for name, join in self.graph.joins.items()
-                if name not in self._initial
-            ]
-        else:
+        # set manual exclusions
+        if manual_exclude is None:
             exclude = []
+        else:
+            exclude = [*manual_exclude]
+
+        # add initial exclusions
+        if exclude_initial:
+            g = self.graph.spec.graph
+            exclude += [
+                self.graph.node(node)
+                for node in g.nodes
+                if node not in self._trace.initial
+            ]
+            exclude += [
+                self.graph.edge(src, tgt)
+                for src, tgt in g.edges
+                if src not in self._trace.initial and tgt not in self._trace.initial
+            ]
+            exclude += [
+                self.graph.join(node)
+                for node in g.nodes
+                if node not in self._trace.initial
+            ]
 
         return iter(
             itertools.chain(
@@ -408,6 +517,7 @@ class GraphExecutor(nn.Module, ABC):
                 get_named_mstep_params(
                     self.graph.edges,
                     default=True,
+                    exclude=exclude,
                     prefix="graph.edges",
                     remove_duplicate=remove_duplicate,
                 ),
@@ -421,46 +531,16 @@ class GraphExecutor(nn.Module, ABC):
             )
         )
 
-    def learn_params(self, exclude_initial: bool = False) -> Iterator[nn.Parameter]:
-        for _, p in self.named_learn_params(exclude_initial, True):
+    def train_params(
+        self,
+        exclude_initial: bool = False,
+        manual_exclude: Sequence[nn.Parameter | nn.Module] | None = None,
+    ) -> Iterator[nn.Parameter]:
+        for _, p in self.named_train_params(exclude_initial, manual_exclude, True):
             yield p
 
     def reset(self) -> None:
         self.graph.reset()
-
-    @abstractmethod
-    def init(self, *args, **kwargs) -> None:
-        raise NotImplementedError
-
-    def energy(self) -> None:
-        self.graph.energy()
-
-    @abstractmethod
-    def forward(self, *args, **kwargs) -> dict[str, torch.Tensor]:
-        raise NotImplementedError
-
-
-class PredictionExecutor(GraphExecutor):
-
-    _trace: Trace
-
-    def __init__(
-        self,
-        graph: Graph,
-        initial: Sequence[str],
-        ordering: Sequence[str | Sequence[str]],
-        traversal_strategy: TraversalStrategy = TraversalStrategy.BFS,
-    ) -> None:
-        trace = Trace(
-            graph._spec,
-            [initial, *ordering],
-            traversal_strategy=traversal_strategy,
-            skip_unreachable=False,
-        )
-
-        GraphExecutor.__init__(self, graph, tuple(trace.initial), tuple(trace.required))
-
-        self._trace = trace
 
     def init(
         self, initial: dict[str, torch.Tensor], hints: dict[str, torch.Tensor]
@@ -484,6 +564,9 @@ class PredictionExecutor(GraphExecutor):
                             "internal trace contains an invalid ResolutionStrategy"
                         )
                 self.graph.node(target).init(self.graph.join(target)(inputs))
+
+    def energy(self) -> torch.Tensor:
+        return self.graph.energy()
 
     def forward(
         self, initial: dict[str, torch.Tensor], hints: dict[str, torch.Tensor]

@@ -1,7 +1,7 @@
 import functools
 import math
 import types
-from collections.abc import Mapping, MutableMapping, Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping, MutableMapping
 from typing import Any, Type, overload
 
 import einops as ein
@@ -218,7 +218,7 @@ class LambdaModule(nn.Module):
         *kwargs (Any): appended keyword arguments for ``fn``.
 
     Raises:
-        TypeError: ``fn`` must be a ``Callable``.
+        TypeError: ``fn`` must be a ``~collections.abc.Callable``.
 
     Tip:
         The behavior for ``*args`` and ``**kwargs`` mirrors that of
@@ -265,7 +265,7 @@ class TypedModuleDict[T: nn.Module](nn.Module, MutableMapping):
 
     Args:
         modules (Mapping[str, T] | None, optional): initial modules to add along with
-            their names. Defaults to None.
+            their names. Defaults to ``None``.
         narrowing (Type[T], optional): subclass to narrow inserted modules to.
             Defaults to :py:class:`~torch.nn.Module`.
 

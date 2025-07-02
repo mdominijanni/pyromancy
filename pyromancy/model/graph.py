@@ -1,6 +1,6 @@
+from __future__ import annotations
 from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from operator import itemgetter
-from typing import Self
 
 import einops as ein
 import networkx as nx
@@ -15,10 +15,11 @@ class GraphSpec[T: Hashable]:
     r"""DiGraph with a total ordering on nodes.
 
     Args:
-        graph (nx.DiGraph): underlying directed graph.
+        graph (~networkx.DiGraph): underlying directed graph.
         order (Sequence[T]): ordering of nodes.
 
     Raises:
+        RuntimeError: ``graph`` must have exactly one weakly connected component.
         RuntimeError: entries of ``order`` must be unique.
         RuntimeError: entries of ``order`` must be a exactly match ``graph.nodes``.
 
@@ -34,6 +35,12 @@ class GraphSpec[T: Hashable]:
     _order: dict[T, int]
 
     def __init__(self, graph: nx.DiGraph, order: Sequence[T]) -> None:
+        # check that the entire graph is connected
+        if nx.number_weakly_connected_components(graph) != 1:
+            raise RuntimeError(
+                "`graph` must have exactly one weakly connected component"
+            )
+
         self._graph = graph
         self._order = {node: pos for pos, node in enumerate(order)}
 
@@ -58,17 +65,33 @@ class GraphSpec[T: Hashable]:
         r"""Returns a resticted view of the underlying directed graph.
 
         Returns:
-            nx.DiGraph: resticted view of the underlying directed graph.
+            ~networkx.DiGraph: resticted view of the underlying directed graph.
         """
         return nx.restricted_view(self._graph, (), ())
 
-    def reverse(self) -> Self:
-        r"""Returns a new ``GraphSpec`` with the graph reversed and node order preserved.
+    def copy(self) -> GraphSpec:
+        r"""Returns a new ``GraphSpec`` that is a deep copy of the original.
 
         Returns:
-            Self: new ``GraphSpec`` with the graph edges reversed.
+            GraphSpec: deep copy of ``self``.
         """
-        return type(self)(self._graph.reverse(True), tuple(self._order.keys()))
+        return GraphSpec(self._graph.copy(), tuple(self._order.keys()))
+
+    def reverse(self, reverse_order: bool = False) -> GraphSpec:
+        r"""Returns a new ``GraphSpec`` with the graph reversed and node order preserved.
+
+        Args:
+            reverse_order (bool, optional): if the order of nodes should also
+                be reversed. Defaults to ``False``.
+
+        Returns:
+            GraphSpec: new ``GraphSpec`` with the graph edges reversed.
+        """
+        order = tuple(self._order.keys())
+        if reverse_order:
+            order = tuple(reversed(order))
+
+        return GraphSpec(self._graph.reverse(True), order)
 
     def nodes(self) -> list[T]:
         r"""Returns the graph nodes in sorted order.
@@ -153,9 +176,9 @@ class GraphNodeView:
     r"""Intractable view of a Node inside of a Graph.
 
     Args:
-        node (Node): predictive coding node.
+        node (~pyromancy.nodes.Node): predictive coding node.
         join (~torch.nn.Module): join operation for inputs.
-        predecessors (Sequence[tuple[Node, ~torch.nn.Module]]): tuples of
+        predecessors (Sequence[tuple[~pyromancy.nodes.Node, ~torch.nn.Module]]): tuples of
             ``(predecessor, edge)`` providing input to ``node``.
 
     Raises:
@@ -195,7 +218,7 @@ class GraphNodeView:
         r"""Returns the predictive coding node.
 
         Returns:
-            Node: predictive coding node.
+            ~pyromancy.nodes.Node: predictive coding node.
         """
         return self._node
 
@@ -204,7 +227,7 @@ class GraphNodeView:
         r"""Returns the prediction for the value of the node.
 
         Returns:
-            torch.Tensor: prediction for the value of the node.
+            ~torch.Tensor: prediction for the value of the node.
         """
         return self._join([edge(node.activity) for node, edge in self._predecessors])
 
@@ -213,7 +236,7 @@ class GraphNodeView:
         r"""Returns the error between the prediction and the value of the node.
 
         Returns:
-            torch.Tensor: error between the prediction and the value of the node.
+            ~torch.Tensor: error between the prediction and the value of the node.
         """
         return self._node.error(self.prediction)
 
@@ -221,12 +244,12 @@ class GraphNodeView:
     def energy(self) -> torch.Tensor:
         r"""Returns the energy between the prediction and the value of the node.
 
+        Returns:
+            ~torch.Tensor: energy between the prediction and the value of the node.
+
         Raises:
             TypeError: only nodes of type :py:class:`~pyromancy.nodes.PredictionNode`
                 support computing energy.
-
-        Returns:
-            torch.Tensor: energy between the prediction and the value of the node.
         """
         if not isinstance(self._node, PredictiveNode):
             raise TypeError("only `PredictionNode` nodes support `energy()`")
@@ -237,10 +260,11 @@ class Graph(nn.Module):
     r"""Predictive coding graph.
 
     Args:
-        nodes (Mapping[str, Node]): nodes in the graph, mapped by a string identifier.
-        edges (Mapping[tuple[str, str], nn.Module]): edges in the graph, representing
+        nodes (Mapping[str, ~pyromancy.nodes.Node]): nodes in the graph, mapped by a
+            string identifier.
+        edges (Mapping[tuple[str, str], ~torch.nn.Module]): edges in the graph, representing
             connections between nodes, mapped by a tuple ``(source, target)``.
-        joins (Mapping[str, Callable[[tuple[torch.Tensor, ...]], torch.Tensor]] | None, optional): method
+        joins (Mapping[str, Callable[[tuple[~torch.Tensor, ...]], ~torch.Tensor]] | None, optional): method
             for joining multiple inputs for a node into a single prediction. Defaults to None.
 
     Raises:
@@ -345,21 +369,27 @@ class Graph(nn.Module):
             else:
                 self.joins[name] = join
 
-        # check for graph connectivity
-        _ncomp = nx.number_weakly_connected_components(_graph)
-        if _ncomp > 1:
-            raise RuntimeError(
-                f"graph can only have 1 weakly connected component, but it has {_ncomp}"
-            )
-
         # create graph specification
         self._spec = GraphSpec(_graph, _order)
 
     @property
     def spec(self) -> GraphSpec:
+        r"""Topology of the graph and the node ordering.
+
+        Returns:
+            GraphSpec: object containing the topology of the graph and the node ordering.
+        """
         return self._spec
 
     def nodeview(self, node: str) -> GraphNodeView:
+        r"""View of a node on which operations can be performed based on the graph.
+
+        Args:
+            node (str): name of the node to retrieve.
+
+        Returns:
+            GraphNodeView: view of a node on which operations can be performed based on the graph.
+        """
         return GraphNodeView(
             self.node(node),
             self.join(node),
@@ -370,20 +400,59 @@ class Graph(nn.Module):
         )
 
     def node(self, node: str) -> Node:
+        r"""Returns a graph node.
+
+        Args:
+            node (str): name of the node.
+
+        Returns:
+            Node: graph node.
+        """
         return self.nodes[node]  # type: ignore
 
     def edge(self, source: str, target: str) -> nn.Module:
+        r"""Returns a graph edge.
+
+        Args:
+            source (str): name of the node providing input to the edge.
+            target (str): name of the node receiving output from the edge.
+
+        Returns:
+            nn.Module: graph edge between the source and target nodes.
+        """
         return self.edges[source + " -> " + target]
 
     def join(self, node: str) -> nn.Module:
+        r"""Returns a graph join for a given node.
+
+        Args:
+            node (str): name of the node.
+
+        Returns:
+            nn.Module: graph join for the given node.
+        """
         return self.joins[node]
 
     def reset(self) -> None:
+        r"""Resets nodes in the network."""
         node: Node
-        for node in self.nodes.values():  # type: ignore
+        for node in self.nodes.values():
             node.reset()
 
     def energy(self) -> torch.Tensor:
+        r"""Computes the variational free energy of the network.
+
+        Returns:
+            torch.Tensor: variational free energy of the network.
+
+        Important:
+            The output energy is not reduced along the batch dimension.
+
+        Note:
+            Nodes which are not instances of :py:class:`PredictiveNode` and therefore
+            do not have a defined energy calculation are automatically excluded, as
+            are nodes with no inputs.
+        """
         energy = []
 
         # iterate over the "target" nodes
@@ -404,13 +473,3 @@ class Graph(nn.Module):
 
         # sum energy over nodes
         return ein.reduce(energy, "n ... -> ...", "sum")
-
-    def init(self, *args, **kwargs) -> None:
-        raise RuntimeError(
-            "`init()` is not directly callable on a `Graph`, create a `GraphExecutor`"
-        )
-
-    def forward(self, *args, **kwargs) -> None:
-        raise RuntimeError(
-            "`forward()` is not directly callable on a `Graph`, create a `GraphExecutor`"
-        )
