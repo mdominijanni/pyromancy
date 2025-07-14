@@ -1,7 +1,11 @@
 import networkx as nx
 import pytest
+import torch.nn as nn
 
-from pyromancy.model import GraphSpec
+from pyromancy.nodes import StandardGaussianNode
+from pyromancy.model import Graph, GraphSpec
+
+from .common import random_dag
 
 
 class TestGraphSpec:
@@ -214,3 +218,53 @@ class TestGraphSpec:
         spec = GraphSpec(graph, nodes)
 
         assert tuple(spec.sort_edges(reversed(edges))) == tuple(edges)
+
+
+class TestGraph:
+    def test_init_badgraph_nojoin(self):
+        with pytest.raises(RuntimeError) as excinfo:
+            _ = Graph(
+                nodes={
+                    "n0": StandardGaussianNode(10),
+                    "n1": StandardGaussianNode(10),
+                    "n2": StandardGaussianNode(10),
+                },
+                edges={
+                    ("n1", "n0"): nn.Linear(10, 10),
+                    ("n2", "n0"): nn.Linear(10, 10),
+                },
+            )
+        assert "`joins` must specify a join for node 'n0' with indegree 2" in str(
+            excinfo.value
+        )
+
+    def test_init_badgraph_multicomponent(self):
+        with pytest.raises(RuntimeError) as excinfo:
+            _ = Graph(
+                nodes={
+                    "n0": StandardGaussianNode(10),
+                    "n1": StandardGaussianNode(10),
+                    "n2": StandardGaussianNode(10),
+                    "n3": StandardGaussianNode(10),
+                },
+                edges={
+                    ("n0", "n1"): nn.Linear(10, 10),
+                    ("n2", "n3"): nn.Linear(10, 10),
+                },
+            )
+        assert "`graph` must have exactly one weakly connected component" in str(
+            excinfo.value
+        )
+
+    def test_init_implicitjoin(self):
+        _ = Graph(
+            nodes={
+                "n0": StandardGaussianNode(10),
+                "n1": StandardGaussianNode(10),
+                "n2": StandardGaussianNode(10),
+            },
+            edges={
+                ("n0", "n1"): nn.Linear(10, 10),
+                ("n1", "n2"): nn.Linear(10, 10),
+            },
+        )

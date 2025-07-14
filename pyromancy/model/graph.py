@@ -87,7 +87,7 @@ class GraphSpec[T: Hashable]:
         Returns:
             GraphSpec: new ``GraphSpec`` with the graph edges reversed.
         """
-        order = tuple(self._order.keys())
+        order = tuple(self.nodes())
         if reverse_order:
             order = tuple(reversed(order))
 
@@ -327,7 +327,7 @@ class Graph(nn.Module):
             if not all(n in self.nodes for n in pair):
                 raise KeyError(f"{pair} in `edges` specifies invalid an invalid `Node`")
 
-            self.edges[f"{pair[0]} -> {pair[1]}"] = edge
+            self.edges[self.edgekey(*pair)] = edge
             _graph.add_edge(pair[0], pair[1])
 
         # add joins
@@ -343,7 +343,7 @@ class Graph(nn.Module):
                 # manual join specification required for multiple inputs
                 if _graph.in_degree(name) > 1:  # type: ignore
                     raise RuntimeError(
-                        f"`joins` must specify a join for node {name} "
+                        f"`joins` must specify a join for node '{name}' "
                         f"with indegree {_graph.in_degree(name)}"
                     )
 
@@ -368,6 +368,23 @@ class Graph(nn.Module):
 
         # create graph specification
         self._spec = GraphSpec(_graph, _order)
+
+    @staticmethod
+    def edgekey(source: str, target: str) -> str:
+        r"""Composes an edge key given a source and target node.
+
+        Args:
+            source (str): name of the source node.
+            target (str): name of the target node.
+
+        Returns:
+            str: key specifying the edge from the source node to the target node.
+
+        Important:
+            This does not check the validity of ``source``, ``target``, or the existence
+            of an edge between the two.
+        """
+        return source + " -> " + target
 
     @property
     def spec(self) -> GraphSpec:
@@ -417,7 +434,7 @@ class Graph(nn.Module):
         Returns:
             nn.Module: graph edge between the source and target nodes.
         """
-        return self.edges[source + " -> " + target]
+        return self.edges[self.edgekey(source, target)]
 
     def join(self, node: str) -> nn.Module:
         r"""Returns a graph join for a given node.

@@ -4,18 +4,20 @@ from collections import ChainMap, deque
 from collections.abc import Hashable, Iterator, KeysView, Sequence
 from enum import Enum, auto
 
+import einops as ein
 import networkx as nx
 import torch
 import torch.nn as nn
 
 from .._internal import _Poset
+from ..nodes import PredictiveNode
 from ..utils import (
     eparameters,
     get_named_estep_params,
     get_named_mstep_params,
     mparameters,
 )
-from .graph import Graph, GraphSpec
+from .graph import Graph, GraphNodeView, GraphSpec
 
 
 def _bfs_reachable_from[T: Hashable](
@@ -392,6 +394,7 @@ class GraphExecutor(nn.Module):
 
     graph: Graph
     _trace: GraphTrace
+    _energynodes: list[GraphNodeView]
 
     def __init__(self, graph: Graph, trace: GraphTrace) -> None:
         if graph.spec != trace.spec:
@@ -401,6 +404,13 @@ class GraphExecutor(nn.Module):
 
         self.graph = graph
         self._trace = trace
+        self._energynodes = []
+
+        g = self._trace.spec.graph
+        for node in ChainMap(*reversed(self._trace.process)):
+            has_pred = len(tuple(g.predecessors(node))) > 0
+            if not isinstance(self.graph.node(node), PredictiveNode) or not has_pred:
+                self._energynodes.append(self.graph.nodeview(node))
 
     @property
     def required_inits(self) -> KeysView[str]:
@@ -541,7 +551,8 @@ class GraphExecutor(nn.Module):
             yield p
 
     def reset(self) -> None:
-        self.graph.reset()
+        for node in ChainMap(*reversed(self._trace.process)):
+            self.graph.node(node).reset()
 
     def init(
         self,
@@ -572,7 +583,9 @@ class GraphExecutor(nn.Module):
             self.graph.node(target).init(self.graph.join(target)(inputs))
 
     def energy(self) -> torch.Tensor:
-        return self.graph.energy()
+        return ein.reduce(
+            [nv.energy for nv in self._energynodes], "n ... -> ...", "sum"
+        )
 
     def forward(
         self,
@@ -597,8 +610,6 @@ class GraphExecutor(nn.Module):
                         raise RuntimeError(
                             "internal trace contains an invalid ResolutionStrategy"
                         )
-            output[target] = self.graph.node(target)(
-                self.graph.join(target)(inputs)
-            )
+            output[target] = self.graph.node(target)(self.graph.join(target)(inputs))
 
         return output
