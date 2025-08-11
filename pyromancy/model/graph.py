@@ -16,25 +16,32 @@ class GraphSpec[T: Hashable]:
 
     Args:
         graph (~networkx.DiGraph): underlying directed graph.
-        order (Sequence[T]): ordering of nodes.
+        node_order (Sequence[T]): ordering of nodes.
+        edge_order (Sequence[tuple[T, T]]): ordering of edges.
 
     Raises:
         RuntimeError: ``graph`` must have exactly one weakly connected component.
-        RuntimeError: entries of ``order`` must be unique.
-        RuntimeError: entries of ``order`` must be a exactly match ``graph.nodes``.
+        RuntimeError: entries of ``node_order`` must be unique.
+        RuntimeError: entries of ``node_order`` must be a exactly match ``graph.nodes``.
+        RuntimeError: entries of ``edge_order`` must be unique.
+        RuntimeError: entries of ``edge_order`` must be a exactly match ``graph.edges``.
 
     Important:
         Type ``T`` must be a subtype of :py:type:`~typing.Hashable`.
-
-    Note:
-        Each node is treated as a symbol in a lexicographical order, and edges are
-        sorted such that the parent node is the more significant symbol.
     """
 
     _graph: nx.DiGraph
-    _order: dict[T, int]
+    _node_order: dict[T, int]
+    _edge_order: dict[tuple[T, T], int]
+    _pred_order: dict[T, dict[T, int]]
+    _succ_order: dict[T, dict[T, int]]
 
-    def __init__(self, graph: nx.DiGraph, order: Sequence[T]) -> None:
+    def __init__(
+        self,
+        graph: nx.DiGraph,
+        node_order: Sequence[T],
+        edge_order: Sequence[tuple[T, T]],
+    ) -> None:
         # check that the entire graph is connected
         if nx.number_weakly_connected_components(graph) != 1:
             raise RuntimeError(
@@ -42,14 +49,32 @@ class GraphSpec[T: Hashable]:
             )
 
         self._graph = graph
-        self._order = {node: pos for pos, node in enumerate(order)}
+        self._node_order = {node: pos for pos, node in enumerate(node_order)}
+        self._edge_order = {edge: pos for pos, edge in enumerate(edge_order)}
 
-        if len(order) != len(self._order):
-            raise RuntimeError("`order` cannot contain duplicate entries")
-        if set(self._graph.nodes) != self._order.keys():
+        if len(node_order) != len(self._node_order):
+            raise RuntimeError("`node_order` cannot contain duplicate entries")
+        if set(graph.nodes) != self._node_order.keys():
             raise RuntimeError(
-                "`order` must contain the exactly the same nodes as `graph`"
+                "`node_order` must contain the exactly the same nodes as `graph`"
             )
+
+        if len(edge_order) != len(self._edge_order):
+            raise RuntimeError("`edge_order` cannot contain duplicate entries")
+        if set(graph.edges) != self._edge_order.keys():
+            raise RuntimeError(
+                "`edge_order` must contain the exactly the same edges as `graph`"
+            )
+
+        self._pred_order = {succ: {} for succ in self._node_order}
+        self._succ_order = {pred: {} for pred in self._node_order}
+
+        for pred, succ in self._edge_order:
+            pred_pos = self._node_order[pred] * len(self._node_order)
+            succ_pos = self._node_order[succ] * len(self._node_order)
+
+            self._pred_order[succ][pred] = succ_pos + len(self._pred_order[succ])
+            self._succ_order[pred][succ] = pred_pos + len(self._succ_order[pred])
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, GraphSpec):
@@ -58,7 +83,11 @@ class GraphSpec[T: Hashable]:
             return False
         if self._graph.edges != other._graph.edges:
             return False
-        return self._order == other._order
+        if self._node_order != other._node_order:
+            return False
+        if self._edge_order != other._edge_order:
+            return False
+        return True
 
     @property
     def graph(self) -> nx.DiGraph:
@@ -75,23 +104,35 @@ class GraphSpec[T: Hashable]:
         Returns:
             GraphSpec: deep copy of ``self``.
         """
-        return GraphSpec(self._graph.copy(), tuple(self._order.keys()))
+        return GraphSpec(
+            self._graph.copy(),
+            tuple(self._node_order.keys()),
+            tuple(self._edge_order.keys()),
+        )
 
-    def reverse(self, reverse_order: bool = False) -> GraphSpec:
+    def reverse(
+        self, reverse_node_order: bool = False, reverse_edge_order: bool = False
+    ) -> GraphSpec:
         r"""Returns a new ``GraphSpec`` with the graph reversed and node order preserved.
 
         Args:
-            reverse_order (bool, optional): if the order of nodes should also
+            reverse_node_order (bool, optional): if the order of nodes should also
+                be reversed. Defaults to ``False``.
+            reverse_edge_order (bool, optional): if the order of edges should also
                 be reversed. Defaults to ``False``.
 
         Returns:
             GraphSpec: new ``GraphSpec`` with the graph edges reversed.
         """
-        order = tuple(self.nodes())
-        if reverse_order:
-            order = tuple(reversed(order))
+        node_order = tuple(self._node_order.keys())
+        edge_order = tuple((succ, pred) for pred, succ in self._edge_order.keys())
 
-        return GraphSpec(self._graph.reverse(True), order)
+        if reverse_node_order:
+            node_order = tuple(reversed(node_order))
+        if reverse_edge_order:
+            edge_order = tuple(reversed(edge_order))
+
+        return GraphSpec(self._graph.reverse(True), node_order, edge_order)
 
     def nodes(self) -> list[T]:
         r"""Returns the graph nodes in sorted order.
@@ -101,7 +142,7 @@ class GraphSpec[T: Hashable]:
         """
         return sorted(
             self._graph.nodes,
-            key=lambda n, order=self._order: order[n],
+            key=lambda n, order=self._node_order: order[n],
         )
 
     def edges(self) -> list[tuple[T, T]]:
@@ -112,7 +153,7 @@ class GraphSpec[T: Hashable]:
         """
         return sorted(
             self._graph.edges,
-            key=lambda e, order=self._order: order[e[0]] * len(order) + order[e[1]],
+            key=lambda e, order=self._edge_order: order[e],
         )
 
     def successors(self, node: T) -> list[T]:
@@ -126,7 +167,7 @@ class GraphSpec[T: Hashable]:
         """
         return sorted(
             self._graph.successors(node),
-            key=lambda n, order=self._order: order[n],
+            key=lambda n, order=self._succ_order[node]: order[n],
         )
 
     def predecessors(self, node: T) -> list[T]:
@@ -140,7 +181,7 @@ class GraphSpec[T: Hashable]:
         """
         return sorted(
             self._graph.predecessors(node),
-            key=lambda n, order=self._order: order[n],
+            key=lambda n, order=self._pred_order[node]: order[n],
         )
 
     def sort_nodes(self, nodes: Iterable[T]) -> list[T]:
@@ -154,7 +195,7 @@ class GraphSpec[T: Hashable]:
         """
         return sorted(
             nodes,
-            key=lambda n, order=self._order: order[n],
+            key=lambda n, order=self._node_order: order[n],
         )
 
     def sort_edges(self, edges: Iterable[tuple[T, T]]) -> list[tuple[T, T]]:
@@ -168,7 +209,7 @@ class GraphSpec[T: Hashable]:
         """
         return sorted(
             edges,
-            key=lambda e, order=self._order: order[e[0]] * len(order) + order[e[1]],
+            key=lambda e, order=self._edge_order: order[e],
         )
 
 
@@ -264,8 +305,8 @@ class Graph(nn.Module):
             string identifier.
         edges (Mapping[tuple[str, str], ~torch.nn.Module]): edges in the graph, representing
             connections between nodes, mapped by a tuple ``(source, target)``.
-        joins (Mapping[str, Callable[[tuple[~torch.Tensor, ...]], ~torch.Tensor]] | None, optional): method
-            for joining multiple inputs for a node into a single prediction. Defaults to None.
+        joins (Mapping[str, Callable[[tuple[~torch.Tensor, ...]], ~torch.Tensor]] | None, optional):
+            method for joining multiple inputs for a node into a single prediction. Defaults to None.
 
     Raises:
         AttributeError: ``nodes`` cannot be empty.
@@ -277,6 +318,16 @@ class Graph(nn.Module):
         RuntimeError: a join must be specified for any node with multiple inputs.
         TypeError: values in ``edges`` must be a :py:class:`~collections.abc.Callable`.
         RuntimeError: the graph cannot contain multiple disconnected subgraphs.
+
+    Tip:
+        The values of the ``joins`` argument can be instances of :py:class:`~torch.nn.Module`
+        and their E-step and M-step parameters will be retrieved from :py:class:`GraphExecutor`.
+        Internally, any join that is not a :py:class:`~torch.nn.Module` will be wrapped
+        with a :py:class:`LambdaModule`.
+
+    Important:
+        The tuple of tensors passed to each join are given in the same order as the
+        edges with the corresponding target node are specified by the ``edges`` argument.
     """
 
     _spec: GraphSpec
@@ -301,7 +352,8 @@ class Graph(nn.Module):
         nn.Module.__init__(self)
 
         _graph = nx.DiGraph()
-        _order = []
+        _node_order = []
+        _edge_order = []
 
         self.nodes = TypedModuleDict(narrowing=Node)
         self.edges = TypedModuleDict()
@@ -316,7 +368,7 @@ class Graph(nn.Module):
 
             self.nodes[name] = node
             _graph.add_node(name)
-            _order.append(name)
+            _node_order.append(name)
 
         # add edges
         for pair, edge in edges.items():
@@ -329,6 +381,7 @@ class Graph(nn.Module):
 
             self.edges[self.edgekey(*pair)] = edge
             _graph.add_edge(pair[0], pair[1])
+            _edge_order.append(pair)
 
         # add joins
         for name, join in (
@@ -367,7 +420,7 @@ class Graph(nn.Module):
                 self.joins[name] = join
 
         # create graph specification
-        self._spec = GraphSpec(_graph, _order)
+        self._spec = GraphSpec(_graph, _node_order, _edge_order)
 
     @staticmethod
     def edgekey(source: str, target: str) -> str:
@@ -422,7 +475,7 @@ class Graph(nn.Module):
         Returns:
             Node: graph node.
         """
-        return self.nodes[node]  # type: ignore
+        return self.nodes[node]
 
     def edge(self, source: str, target: str) -> nn.Module:
         r"""Returns a graph edge.

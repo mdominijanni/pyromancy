@@ -438,17 +438,17 @@ class GraphExecutor(nn.Module):
             exclude += [
                 self.graph.node(node)
                 for node in g.nodes
-                if node not in self._trace.initial
+                if node in self._trace.initial
             ]
             exclude += [
                 self.graph.edge(src, tgt)
                 for src, tgt in g.edges
-                if src not in self._trace.initial and tgt not in self._trace.initial
+                if src in self._trace.initial and tgt in self._trace.initial
             ]
             exclude += [
                 self.graph.join(node)
                 for node in g.nodes
-                if node not in self._trace.initial
+                if node in self._trace.initial
             ]
 
         return iter(
@@ -503,17 +503,17 @@ class GraphExecutor(nn.Module):
             exclude += [
                 self.graph.node(node)
                 for node in g.nodes
-                if node not in self._trace.initial
+                if node in self._trace.initial
             ]
             exclude += [
                 self.graph.edge(src, tgt)
                 for src, tgt in g.edges
-                if src not in self._trace.initial and tgt not in self._trace.initial
+                if src in self._trace.initial and tgt in self._trace.initial
             ]
             exclude += [
                 self.graph.join(node)
                 for node in g.nodes
-                if node not in self._trace.initial
+                if node in self._trace.initial
             ]
 
         return iter(
