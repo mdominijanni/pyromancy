@@ -58,16 +58,24 @@ def eparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
         If a class inherits from multiple classes defining E-step parameters, then even
         if it does not directly specify any E-step parameters it should still be
         decorated with ``@eparameters()`` to collate all superclass E-step parameters.
+
+    Tip:
+        This defines the maximal set of possible E-step parameters. If a class may or
+        may not contain a parameter that should be updated on E-steps, it should still
+        be included here.
+
+    Tip:
+        E-step parameters can be set on any class, which may be useful in some cases
+        (e.g., when defining a mixin class), but the parameters can only be accessed
+        from objects that inherit from :py:class:`~torch.nn.Module`.
     """
 
     def decorator_eparameters(cls: Type[T]) -> Type[T]:
-        if not issubclass(cls, nn.Module):
-            raise TypeError("`cls` must be a subclass of `torch.nn.Module`")
         if not all(isinstance(f, str) for f in fields):
             raise TypeError("all elements of `fields` must be of type str")
 
         if "_e_params_" not in cls.__dict__:
-            cls._e_params_ = {f: None for f in fields} | _get_declared_estep_params(cls)
+            cls._e_params_ = {f: None for f in fields} | _get_declared_estep_params(cls)  # type: ignore
             cls.__annotations__["_e_params_"] = dict[str, Any]
 
         return cls
@@ -85,16 +93,24 @@ def mparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
         If a class inherits from multiple classes defining M-step parameters, then even
         if it does not directly specify any M-step parameters it should still be
         decorated with ``@mparameters()`` to collate all superclass M-step parameters.
+
+    Tip:
+        This defines the maximal set of possible M-step parameters. If a class may or
+        may not contain a parameter that should be updated on M-steps, it should still
+        be included here.
+
+    Tip:
+        M-step parameters can be set on any class, which may be useful in some cases
+        (e.g., when defining a mixin class), but the parameters can only be accessed
+        from objects that inherit from :py:class:`~torch.nn.Module`.
     """
 
     def decorator_mparameters(cls: Type[T]) -> Type[T]:
-        if not issubclass(cls, nn.Module):
-            raise TypeError("`cls` must be a subclass of `torch.nn.Module`")
         if not all(isinstance(f, str) for f in fields):
             raise TypeError("all elements of `fields` must be of type str")
 
         if "_m_params_" not in cls.__dict__:
-            cls._m_params_ = {f: None for f in fields} | _get_declared_mstep_params(cls)
+            cls._m_params_ = {f: None for f in fields} | _get_declared_mstep_params(cls)  # type: ignore
             cls.__annotations__["_m_params_"] = dict[str, Any]
 
         return cls

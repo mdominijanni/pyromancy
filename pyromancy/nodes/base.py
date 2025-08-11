@@ -133,119 +133,6 @@ class Node(nn.Module, ABC):
         """
         return self.error_from(self.activity, pred)
 
-    @abstractmethod
-    def forward(self, inputs: torch.Tensor, **kwargs) -> torch.Tensor:
-        r"""Computes a forward pass on the node.
-
-        Args:
-            inputs (~torch.Tensor): input to the node.
-
-        Returns:
-            ~torch.Tensor: value of the node.
-
-        Raises:
-            NotImplementedError: must be implemented by subclasses.
-
-        Important:
-            Subclasses implementing this method should perform the following operations:
-            - Initialize the value of the node based on ``inputs`` if ``self.training`` is ``True``.
-            - Return the value of the node.
-
-            Most subclasses should inherit from :py:class:`~pyromancy.nodes.PredictiveNode`
-            instead, although special cases may inherit from this class instead (see
-            :py:class:`~pyromancy.nodes.BiasNode` for an example of this).
-        """
-        raise NotImplementedError
-
-
-@eparameters("value")
-class PredictiveNode(Node, ABC):
-    r"""Base class for predictive coding nodes that generate predictions.
-
-    Args:
-        *shape (int | None): base shape of the node's state.
-
-    Attributes:
-        value (~torch.nn.parameter.Parameter): current value of the node.
-    """
-
-    value: nn.Parameter
-
-    def __init__(self, *shape: int | None) -> None:
-        Node.__init__(self, *shape)
-        self.value = nn.Parameter(torch.empty(0), True)
-
-    @property
-    def activity(self) -> nn.Parameter:
-        r"""Activity of the node.
-
-        Returns:
-            ~torch.nn.Parameter: activity (state) of the node.
-        """
-        return self.value
-
-    @torch.no_grad()
-    def reset(self) -> None:
-        r"""Resets the node state.
-
-        This operation is typically executed after each new batch. With inference learning,
-        this is done after M-step. With incremental inference learning, this is done after
-        the *final* M-step.
-        """
-        self.zero_grad()
-        self.value.data = self.value.new_empty(0)
-
-    @torch.no_grad()
-    def init(self, value: torch.Tensor) -> nn.Parameter:
-        r"""Initializes the node's state to a new value.
-
-        Args:
-            value (~torch.Tensor): value to initialize to.
-
-        Returns:
-            ~torch.nn.parameter.Parameter: the reinitialized value.
-
-        Raises:
-            ValueError: shape of ``value`` is incompatible with the node.
-        """
-        if not self.shapeobj.compat(*value.shape):
-            raise ValueError(
-                f"shape of `value` {(*value.shape,)} is incompatible "
-                f"with node shape {(*self.shapeobj,)}"
-            )
-
-        self.value.data = self.value.data.new_empty(*value.shape)
-        self.value.copy_(value)
-
-        return self.value
-
-    @abstractmethod
-    def energy_from(self, value: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
-        r"""Computes variational free energy for a prediction of the node state and its presumed state.
-
-        Args:
-            value (~torch.Tensor): presumed value of the node state.
-            pred (~torch.Tensor): prediction of the node state.
-
-        Returns:
-            ~torch.Tensor: variational free energy between its presumed state and a prediction.
-
-        Raises:
-            NotImplementedError: must be implemented by subclasses.
-        """
-        raise NotImplementedError
-
-    def energy(self, pred: torch.Tensor) -> torch.Tensor:
-        r"""Computes variational free energy for a prediction of the node state.
-
-        Args:
-            pred (~torch.Tensor): prediction of the node state.
-
-        Returns:
-            ~torch.Tensor: variational free energy between the state and a prediction.
-        """
-        return self.energy_from(self.activity, pred)
-
     def forward(self, inputs: torch.Tensor, **kwargs) -> torch.Tensor:
         r"""Computes a forward pass on the node.
 
@@ -263,6 +150,44 @@ class PredictiveNode(Node, ABC):
             return self.init(inputs)
         else:
             return inputs
+
+
+class PredictiveNode(Node, ABC):
+    r"""Base class for predictive coding nodes that generate predictions.
+
+    Args:
+        *shape (int | None): base shape of the node's state.
+    """
+
+    def __init__(self, *shape: int | None) -> None:
+        Node.__init__(self, *shape)
+
+    @abstractmethod
+    def energy_from(self, value: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
+        r"""Computes energy for a prediction of the node state and its presumed state.
+
+        Args:
+            value (~torch.Tensor): presumed value of the node state.
+            pred (~torch.Tensor): prediction of the node state.
+
+        Returns:
+            ~torch.Tensor: energy between its presumed state and a prediction.
+
+        Raises:
+            NotImplementedError: must be implemented by subclasses.
+        """
+        raise NotImplementedError
+
+    def energy(self, pred: torch.Tensor) -> torch.Tensor:
+        r"""Computes energy for a prediction of the node state.
+
+        Args:
+            pred (~torch.Tensor): prediction of the node state.
+
+        Returns:
+            ~torch.Tensor: energy between the state and a prediction.
+        """
+        return self.energy_from(self.activity, pred)
 
 
 class VariationalNode(PredictiveNode, ABC):
@@ -306,3 +231,74 @@ class VariationalNode(PredictiveNode, ABC):
             ~torch.Tensor: samples from the variational distribution.
         """
         return self.sample_from(self.activity, generator=generator)
+
+
+@eparameters("value")
+class ValueNodeMixin:
+    r"""Mixin for nodes where the activity is represented by a single tensor.
+
+    Attributes:
+        value (~torch.nn.parameter.Parameter): current value of the node.
+
+    Important:
+        In order for a class to inherit from this mixin, it must also inherit from
+        :py:class:`Node`. Additionally, `Node.__init__()` must be called prior to
+        `ValueNodeMixin.__init__()`.
+    """
+
+    value: nn.Parameter
+
+    def __init__(self) -> None:
+        self.value = nn.Parameter(torch.empty(0), True)
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if not issubclass(cls, Node):
+            raise TypeError(
+                f"{cls.__name__} must also inherit from Node to inherit from ValueNodeMixin"
+            )
+
+    @property
+    def activity(self) -> nn.Parameter:
+        r"""Activity of the node.
+
+        Returns:
+            ~torch.nn.Parameter: activity (state) of the node.
+        """
+        return self.value
+
+    @torch.no_grad()
+    def reset(self) -> None:
+        r"""Resets the node state.
+
+        This operation is typically executed after each new batch. With inference learning,
+        this is done after M-step. With incremental inference learning, this is done after
+        the *final* M-step.
+        """
+        # assert isinstance(self, Node)
+        self.zero_grad()  # type: ignore
+        self.value.data = self.value.new_empty(0)
+
+    @torch.no_grad()
+    def init(self, value: torch.Tensor) -> nn.Parameter:
+        r"""Initializes the node's state to a new value.
+
+        Args:
+            value (~torch.Tensor): value to initialize to.
+
+        Returns:
+            ~torch.nn.parameter.Parameter: the reinitialized value.
+
+        Raises:
+            ValueError: shape of ``value`` is incompatible with the node.
+        """
+        if not self.shapeobj.compat(*value.shape):  # type: ignore
+            raise ValueError(
+                f"shape of `value` {(*value.shape,)} is incompatible "
+                f"with node shape {(*self.shapeobj,)}"  # type: ignore
+            )
+
+        self.value.data = self.value.data.new_empty(*value.shape)
+        self.value.copy_(value)
+
+        return self.value

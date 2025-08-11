@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-from ..utils import eparameters, mparameters
-from .base import Node
+from ..utils import mparameters
+from .base import Node, ValueNodeMixin
 
 
 @mparameters("bias")
@@ -66,14 +66,14 @@ class BiasNode(Node):
         r"""Computes elementwise error for a prediction of the node state and its presumed state.
 
         .. math::
-            \boldsymbol{\varepsilon} = \mathbf{b} - \boldsymbol{\mu}
+            \boldsymbol{\epsilon} = \mathbf{b} - \boldsymbol{\mu}
 
         Args:
             value (~torch.Tensor): presumed value of the node state :math:`\mathbf{b}`.
             pred (~torch.Tensor): predicted bias :math:`\boldsymbol{\mu}`.
 
         Returns:
-            ~torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
+            ~torch.Tensor: elementwise error :math:`\boldsymbol{\epsilon}`.
         """
         return value - pred
 
@@ -165,38 +165,19 @@ class FixedNode(Node):
         r"""Computes elementwise error for a prediction of the node state and its presumed state.
 
         .. math::
-            \boldsymbol{\varepsilon} = \mathbf{z} - \boldsymbol{\mu}
+            \boldsymbol{\epsilon} = \mathbf{z} - \boldsymbol{\mu}
 
         Args:
             value (~torch.Tensor): presumed value of the node state :math:`\mathbf{z}`.
             pred (~torch.Tensor): predicted value :math:`\boldsymbol{\mu}`.
 
         Returns:
-            ~torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
+            ~torch.Tensor: elementwise error :math:`\boldsymbol{\epsilon}`.
         """
         return value - pred
 
-    def forward(self, inputs: torch.Tensor, **kwargs) -> torch.Tensor:
-        r"""Computes a forward pass on the node.
 
-        When ``self.training`` is True, the prediction is assigned to the value and then
-        value is returned. When ``self.training`` is False, the prediction is directly
-        returned (i.e. this acts as the identity operation).
-
-        Args:
-            inputs (~torch.Tensor): prediction of the value.
-
-        Returns:
-            ~torch.Tensor: value of the node.
-        """
-        if self.training:
-            return self.init(inputs)
-        else:
-            return inputs
-
-
-@eparameters("value")
-class FloatNode(Node):
+class FloatNode(ValueNodeMixin, Node):
     r"""Input node with an trainable value.
 
     Args:
@@ -210,85 +191,21 @@ class FloatNode(Node):
         where the value is updated on E-steps.
     """
 
-    value: nn.Parameter
-
     def __init__(self, *shape: int | None) -> None:
         Node.__init__(self, *shape)
-        self.value = nn.Parameter(torch.empty(0), True)
-
-    @property
-    def activity(self) -> nn.Parameter:
-        r"""Activity of the node.
-
-        Returns:
-            ~torch.nn.Parameter: activity (state) of the node.
-        """
-        return self.value
-
-    @torch.no_grad()
-    def reset(self) -> None:
-        r"""Resets the node state.
-
-        This operation is typically executed after each new batch. With inference learning,
-        this is done after M-step. With incremental inference learning, this is done after
-        the *final* M-step.
-        """
-        self.zero_grad()
-        self.value.data = self.value.new_empty(0)
-
-    @torch.no_grad()
-    def init(self, value: torch.Tensor) -> nn.Parameter:
-        r"""Initializes the node's state to a new value.
-
-        Args:
-            value (~torch.Tensor): value to initialize to.
-
-        Returns:
-            ~torch.nn.parameter.Parameter: the reinitialized value.
-
-        Raises:
-            RuntimeError: shape of ``value`` is incompatible with the node.
-        """
-        if not self.shapeobj.compat(*value.shape):
-            raise ValueError(
-                f"shape of `value` {(*value.shape,)} is incompatible "
-                f"with node shape {(*self.shapeobj,)}"
-            )
-
-        self.value.data = self.value.data.new_empty(*value.shape)
-        self.value.copy_(value)
-
-        return self.value
+        ValueNodeMixin.__init__(self)
 
     def error_from(self, value: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
         r"""Computes elementwise error for a prediction of the node state and its presumed state.
 
         .. math::
-            \boldsymbol{\varepsilon} = \mathbf{z} - \boldsymbol{\mu}
+            \boldsymbol{\epsilon} = \mathbf{z} - \boldsymbol{\mu}
 
         Args:
             value (~torch.Tensor): presumed value of the node state :math:`\mathbf{z}`.
             pred (~torch.Tensor): predicted value :math:`\boldsymbol{\mu}`.
 
         Returns:
-            ~torch.Tensor: elementwise error :math:`\boldsymbol{\varepsilon}`.
+            ~torch.Tensor: elementwise error :math:`\boldsymbol{\epsilon}`.
         """
         return value - pred
-
-    def forward(self, inputs: torch.Tensor, **kwargs) -> torch.Tensor:
-        r"""Computes a forward pass on the node.
-
-        When ``self.training`` is True, the prediction is assigned to the value and then
-        value is returned. When ``self.training`` is False, the prediction is directly
-        returned (i.e. this acts as the identity operation).
-
-        Args:
-            inputs (~torch.Tensor): prediction of the value.
-
-        Returns:
-            ~torch.Tensor: value of the node.
-        """
-        if self.training:
-            return self.init(inputs)
-        else:
-            return inputs

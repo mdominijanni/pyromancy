@@ -240,7 +240,7 @@ class LambdaModule(nn.Module):
 
         @functools.wraps(fn)
         def forward(self, *fargs, **fkwargs):
-            return self._fn(*fargs, *self._args, **(self._kwargs | fkwargs))
+            return self._fn(*self._args, *fargs, **(self._kwargs | fkwargs))
 
         self.forward = types.MethodType(forward, self)
 

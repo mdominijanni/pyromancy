@@ -5,7 +5,7 @@
 .. currentmodule:: pyromancy.nodes
 ```
 
-## Base Classes
+## Base Classes and Mixins
 
 ```{eval-rst}
 .. autosummary::
@@ -15,6 +15,7 @@
     Node
     PredictiveNode
     VariationalNode
+    ValueNodeMixin
 ```
 
 ## Gaussian Nodes
