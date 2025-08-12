@@ -150,6 +150,14 @@ class GraphTrace:
         RuntimeError: trace from initializing nodes don't reach all other nodes (only when ``skip_unreachable=False``).
         RuntimeError: ``ordering`` must contain the exact same nodes as ``spec.graph.nodes``.
         RuntimeError: resolution for a node could not be computed (occurs for unreachable nodes).
+
+    Important:
+        The ``ordering`` argument needs to contain each node in ``spec.graph``
+        exactly once.
+
+    Note:
+        This is primarily used to specify an initialization ordering. Operations
+        on :py:class:`Graph` objects otherwise use their internal node ordering.
     """
 
     process: list[dict[str, tuple[tuple[ResolutionStrategy, str], ...]]]
@@ -197,7 +205,7 @@ class GraphTrace:
         if not skip_unreachable and set(graph.nodes) != reach.keys():
             raise RuntimeError(
                 f"initializing nodes in `ordering[0]` cannot reach all nodes, missing: "
-                f"{', '.join(n for n in reach if n not in graph.nodes)}"
+                f"{', '.join(f"'{n}'" for n in spec.nodes() if n not in reach)}"
             )
 
         # define search variables
@@ -214,10 +222,11 @@ class GraphTrace:
         pruned: nx.DiGraph = graph.copy()  # type: ignore
 
         # process initializing nodes
+        sorted_init = self._spec.sort_nodes(unexplored.rank(0))
         self.process.append(
-            {n: ((ResolutionStrategy.INITIAL, n),) for n in unexplored.rank(0)}
+            {n: ((ResolutionStrategy.INITIAL, n),) for n in sorted_init}
         )
-        self._initial |= {n: None for n in unexplored.rank(0)}
+        self._initial |= {n: None for n in sorted_init}
         pruned.remove_nodes_from(unexplored.rank(0))
 
         # explore the graph
