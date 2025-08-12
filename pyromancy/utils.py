@@ -1,5 +1,5 @@
 from collections.abc import Callable, Iterator, Sequence
-from typing import Any, Type, TypeVar
+from typing import Any, TypeVar
 
 import torch.nn as nn
 
@@ -11,7 +11,8 @@ def _get_declared_estep_params(cls: type, /, *default: Any) -> dict[str, None] |
 
     Args:
         cls (type): class to find E-step parameters for.
-        default (Any, optional): default return value. Defaults to an empty :py:class:`dict`.
+        default (~typing.Any, optional): default return value.
+            Defaults to an empty :py:class:`dict`.
 
     Returns:
         dict[str, None] | None: E-step parameters names if any are declared, otherwise ``None``.
@@ -32,7 +33,8 @@ def _get_declared_mstep_params(cls: type, /, *default: Any) -> dict[str, None] |
 
     Args:
         cls (type): class to find M-step parameters for.
-        default (Any, optional): default return value. Defaults to an empty :py:class:`dict`.
+        default (~typing.Any, optional): default return value.
+            Defaults to an empty :py:class:`dict`.
 
     Returns:
         dict[str, None] | None: M-step parameters names if any are declared, otherwise ``None``.
@@ -48,11 +50,14 @@ def _get_declared_mstep_params(cls: type, /, *default: Any) -> dict[str, None] |
         return params
 
 
-def eparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
+def eparameters(*fields: str) -> Callable[[type[T]], type[T]]:
     r"""Sets the E-step parameters for a class.
 
     Returns:
-        Callable[[Type[T]], Type[T]]: class decorator.
+        ~collections.abc.Callable[[type[T]], type[T]]: class decorator.
+
+    Raises:
+        TypeError: all elements of ``fields`` must be strings.
 
     Important:
         If a class inherits from multiple classes defining E-step parameters, then even
@@ -70,7 +75,7 @@ def eparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
         from objects that inherit from :py:class:`~torch.nn.Module`.
     """
 
-    def decorator_eparameters(cls: Type[T]) -> Type[T]:
+    def decorator_eparameters(cls: type[T]) -> type[T]:
         if not all(isinstance(f, str) for f in fields):
             raise TypeError("all elements of `fields` must be of type str")
 
@@ -83,11 +88,14 @@ def eparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
     return decorator_eparameters
 
 
-def mparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
+def mparameters(*fields: str) -> Callable[[type[T]], type[T]]:
     r"""Sets the M-step parameters for a class.
 
     Returns:
-        Callable[[Type[T]], Type[T]]: class decorator.
+        ~collections.abc.Callable[[type[T]], type[T]]: class decorator.
+
+    Raises:
+        TypeError: all elements of ``fields`` must be strings.
 
     Important:
         If a class inherits from multiple classes defining M-step parameters, then even
@@ -105,7 +113,7 @@ def mparameters(*fields: str) -> Callable[[Type[T]], Type[T]]:
         from objects that inherit from :py:class:`~torch.nn.Module`.
     """
 
-    def decorator_mparameters(cls: Type[T]) -> Type[T]:
+    def decorator_mparameters(cls: type[T]) -> type[T]:
         if not all(isinstance(f, str) for f in fields):
             raise TypeError("all elements of `fields` must be of type str")
 
@@ -126,12 +134,13 @@ def get_named_estep_params(
     recurse: bool = True,
     remove_duplicate=True,
 ) -> Iterator[tuple[str, nn.Parameter]]:
-    r"""Returns an iterator over E-step parameters, yielding both the name of the parameter and the parameter itself.
+    r"""Returns an iterator over E-step parameters, yielding both the name of
+    the parameter and the parameter itself.
 
     Args:
         module (~torch.nn.Module): module from which to retrieve E-step parameters.
-        exclude (Sequence[nn.Parameter | nn.Module] | None) parameters and modules to exclude.
-            Defaults to None.
+        exclude (~collections.abc.Sequence[~torch.nn.parameter.Parameter | ~torch.nn.Module] | None):
+            parameters and modules to exclude. Defaults to None.
         default (bool, optional): if unspecified parameters should default to E-step parameters.
             Defaults to False.
         prefix (str, optional): prefix to prepend to all parameter names.
@@ -142,7 +151,11 @@ def get_named_estep_params(
             Defaults to True.
 
     Yields:
-        tuple[str, nn.Parameter]: tuple containing the name and parameter.
+        tuple[str, torch.nn.Parameter]: tuple containing the name and parameter.
+
+    Raises:
+        TypeError: all elements of ``exclude`` must be of type
+            :py:class:`~torch.nn.parameter.Parameter` or :py:class:`~torch.nn.Module`.
 
     Note:
         Resolution is performed as follows:
@@ -224,13 +237,13 @@ def get_estep_params(
         module (~torch.nn.Module): module from which to retrieve E-step parameters.
         default (bool, optional): if unspecified parameters should default to E-step parameters.
             Defaults to False.
-        exclude (Sequence[nn.Parameter | nn.Module] | None) parameters and modules to exclude.
-            Defaults to None.
+        exclude (~collections.abc.Sequence[~torch.nn.parameter.Parameter | ~torch.nn.Module] | None):
+            parameters and modules to exclude. Defaults to None.
         recurse (bool, optional): if parameters that are not direct members should be included.
             Defaults to True.
 
     Yields:
-        nn.Parameter: E-step parameter.
+        torch.nn.Parameter: E-step parameter.
 
     Note:
         Resolution is performed as follows:
@@ -264,14 +277,15 @@ def get_named_mstep_params(
     recurse: bool = True,
     remove_duplicate=True,
 ) -> Iterator[tuple[str, nn.Parameter]]:
-    r"""Returns an iterator over M-step parameters, yielding both the name of the parameter and the parameter itself.
+    r"""Returns an iterator over M-step parameters, yielding both the name of
+    the parameter and the parameter itself.
 
     Args:
         module (~torch.nn.Module): module from which to retrieve M-step parameters.
         default (bool, optional): if unspecified parameters should default to M-step parameters.
             Defaults to True.
-        exclude (Sequence[nn.Parameter | nn.Module] | None) parameters and modules to exclude.
-            Defaults to None.
+        exclude (~collections.abc.Sequence[~torch.nn.parameter.Parameter | ~torch.nn.Module] | None):
+            parameters and modules to exclude. Defaults to None.
         prefix (str, optional): prefix to prepend to all parameter names.
             Defaults to "".
         recurse (bool, optional): if parameters that are not direct members should be included.
@@ -280,7 +294,11 @@ def get_named_mstep_params(
             Defaults to True.
 
     Yields:
-        tuple[str, nn.Parameter]: tuple containing the name and parameter.
+        tuple[str, torch.nn.Parameter]: tuple containing the name and parameter.
+
+    Raises:
+        TypeError: all elements of ``exclude`` must be of type
+            :py:class:`~torch.nn.parameter.Parameter` or :py:class:`~torch.nn.Module`.
 
     Note:
         Resolution is performed as follows:
@@ -359,16 +377,16 @@ def get_mstep_params(
     r"""Returns an iterator over M-step parameters.
 
     Args:
-        module (~torch.nn.Module): module from which to retrieve M-step parameters.
+        module: module from which to retrieve M-step parameters.
         default (bool, optional): if unspecified parameters should default to M-step parameters.
             Defaults to True.
-        exclude (Sequence[nn.Parameter | nn.Module] | None) parameters and modules to exclude.
-            Defaults to None.
+        exclude (~collections.abc.Sequence[~torch.nn.parameter.Parameter | ~torch.nn.Module] | None):
+            parameters and modules to exclude. Defaults to None.
         recurse (bool, optional): if parameters that are not direct members should be included.
             Defaults to True.
 
     Yields:
-        nn.Parameter: M-step parameter.
+        torch.nn.Parameter: M-step parameter.
 
     Note:
         Resolution is performed as follows:

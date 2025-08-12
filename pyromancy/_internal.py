@@ -6,14 +6,14 @@ class _Poset[T: Hashable](MutableMapping):
     r"""Graded partially ordered set.
 
     Args:
-        ordering (Sequence[Sequence[T]]): partial ordering of elements, where inner
-            sequences contain non-comparable items.
+        ordering (~collections.abc.Sequence[~collections.abc.Sequence[T]]): partial
+            ordering of elements, where inner sequences contain non-comparable items.
 
     Raises:
         RuntimeError: `ordering` cannot contain duplicate items.
 
     Important:
-        Type ``T`` must be a subtype of :py:type:`~typing.Hashable`.
+        Type ``T`` must be a subtype of :py:type:`~collections.abc.Hashable`.
 
     Tip:
         The ``rank`` is assigned automatically based on the index of the containing
@@ -119,7 +119,7 @@ class _Poset[T: Hashable](MutableMapping):
             rank (int): rank of items to retrieve.
 
         Returns:
-            KeysView[T]: items of the specified rank.
+            ~collections.abc.KeysView[T]: items of the specified rank.
 
         Raises:
             IndexError: an invalid rank was specified.

@@ -27,7 +27,7 @@ def _bfs_reachable_from[T: Hashable](
 
     Args:
         graph (nx.DiGraph): directed graph to search in.
-        nodes (Sequence[T]): nodes to use as the search's starting point.
+        nodes (~collections.abc.Sequence[T]): nodes to use as the search's starting point.
 
     Returns:
         dict[T, None]: nodes in ``graph`` reachable from ``nodes``.
@@ -62,7 +62,7 @@ def _dfs_reachable_from[T: Hashable](
 
     Args:
         graph (nx.DiGraph): directed graph to search in.
-        nodes (Sequence[T]): nodes to use as the search's starting point.
+        nodes (~collections.abc.Sequence[T]): nodes to use as the search's starting point.
 
     Returns:
         dict[T, None]: nodes in ``graph`` reachable from ``nodes``.
@@ -131,12 +131,12 @@ class GraphTrace:
 
     Args:
         spec (GraphSpec): object containing the digraph and node order.
-        ordering (Sequence[str | Sequence[str]]): order in which nodes are resolved, where
-            ``ordering[0]`` are initializing nodes.
+        ordering (~collections.abc.Sequence[str | ~collections.abc.Sequence[str]]):
+            order in which nodes are resolved, where ``ordering[0]`` are initializing nodes.
         traversal_strategy (TraversalStrategy, optional): method by which the graph should
-            be traversed when testing reachability. Defaults to ``TraversalStrategy.BFS.``
+            be traversed when testing reachability. Defaults to TraversalStrategy.BFS.
         skip_unreachable (bool, optional): if unreachable nodes should be excluded from
-            the resolution. Defaults to ``False``.
+            the resolution. Defaults to False.
 
     Attributes:
         process (list[dict[str, tuple[tuple[ResolutionStrategy, str], ...]]]): list of stages,
@@ -283,11 +283,12 @@ class GraphTrace:
 
         Args:
             spec (GraphSpec): object containing the DAG and node order.
-            initial (Sequence[str] | str): nodes to use as the starting point of the trace.
+            initial (~collections.abc.Sequence[str] | str): nodes to use as the
+                starting point of the trace.
             traversal_strategy (TraversalStrategy, optional): method by which the graph should
-                be traversed when testing reachability. Defaults to ``TraversalStrategy.BFS.``
+                be traversed when testing reachability. Defaults to TraversalStrategy.BFS.
             skip_unreachable (bool, optional): if unreachable nodes should be excluded from
-                the resolution. Defaults to ``False``.
+                the resolution. Defaults to False.
 
         Returns:
             GraphTrace: trace of the graph.
@@ -361,7 +362,7 @@ class GraphTrace:
         r"""Nodes requiring manual initialization.
 
         Returns:
-            KeysView[str]: nodes requiring manual initialization.
+            ~collections.abc.KeysView[str]: nodes requiring manual initialization.
         """
         return self._initial.keys()
 
@@ -370,7 +371,7 @@ class GraphTrace:
         r"""Nodes requiring a hint during initializaiton.
 
         Returns:
-            KeysView[str]: nodes requiring a hint during initializaiton.
+            ~collections.abc.KeysView[str]: nodes requiring a hint during initializaiton.
         """
         return self._required.keys()
 
@@ -379,7 +380,7 @@ class GraphTrace:
         r"""Nodes unreachable by the initialization trace.
 
         Returns:
-            KeysView[str]: nodes unreachable by the initialization trace.
+            ~collections.abc.KeysView[str]: nodes unreachable by the initialization trace.
         """
         return self._unknown.keys()
 
@@ -402,7 +403,7 @@ class GraphExecutor(nn.Module):
 
     Caution:
         If ``trace`` contains nodes without a known resolution strategy, i.e., those
-        returned by ``trace.unknown``, then :py:meth:`GraphExecutor.init` and
+        returned by :py:attr:`GraphTrace.unknown`, then :py:meth:`GraphExecutor.init` and
         :py:meth:`GraphExecutor.forward` will not fully initialize the graph.
     """
 
@@ -467,13 +468,13 @@ class GraphExecutor(nn.Module):
                 Defaults to True.
             default (bool, optional): if unspecified parameters should default to E-step parameters.
                 Defaults to False.
-            manual_exclude (Sequence[nn.Parameter | nn.Module] | None, optional): additional
-                parameters and modules to exclude. Defaults to None.
+            manual_exclude (~collections.abc.Sequence[~torch.nn.parameter.Parameter | ~torch.nn.Module] | None, optional):
+                additional parameters and modules to exclude. Defaults to None.
             remove_duplicate (bool, optional): if duplicated parameters should be excluded.
                 Defaults to True.
 
         Yields:
-            tuple[str, nn.Parameter]: tuple containing the name and parameter.
+            tuple[str, torch.nn.Parameter]: tuple containing the name and parameter.
         """
         # set manual exclusions
         if manual_exclude is None:
@@ -536,11 +537,11 @@ class GraphExecutor(nn.Module):
                 Defaults to True.
             default (bool, optional): if unspecified parameters should default to E-step parameters.
                 Defaults to False.
-            manual_exclude (Sequence[nn.Parameter | nn.Module] | None, optional): additional
-                parameters and modules to exclude. Defaults to None.
+            manual_exclude (~collections.abc.Sequence[~torch.nn.parameter.Parameter | ~torch.nn.Module] | None, optional):
+                additional parameters and modules to exclude. Defaults to None.
 
         Yields:
-            nn.Parameter: E-step parameter.
+            torch.nn.Parameter: E-step parameter.
         """
         for _, p in self.named_estep_params(
             exclude_initial, default, manual_exclude, True
@@ -560,15 +561,15 @@ class GraphExecutor(nn.Module):
             exclude_initial (bool, optional): if initializing nodes, joins, and
                 edges where both endpoints are initializing nodes should be excluded.
                 Defaults to False.
-            manual_exclude (Sequence[nn.Parameter | nn.Module] | None, optional): additional
-                parameters and modules to exclude. Defaults to None.
+            manual_exclude (~collections.abc.Sequence[~torch.nn.parameter.Parameter | ~torch.nn.Module] | None, optional):
+                additional parameters and modules to exclude. Defaults to None.
             default (bool, optional): if unspecified parameters should default to M-step parameters.
                 Defaults to True.
             remove_duplicate (bool, optional): if duplicated parameters should be excluded.
                 Defaults to True.
 
         Yields:
-            tuple[str, nn.Parameter]: tuple containing the name and parameter.
+            tuple[str, torch.nn.Parameter]: tuple containing the name and parameter.
         """
         # set manual exclusions
         if manual_exclude is None:
@@ -631,11 +632,11 @@ class GraphExecutor(nn.Module):
                 Defaults to True.
             default (bool, optional): if unspecified parameters should default to M-step parameters.
                 Defaults to True.
-            manual_exclude (Sequence[nn.Parameter | nn.Module] | None, optional): additional
-                parameters and modules to exclude. Defaults to None.
+            manual_exclude (~collections.abc.Sequence[~torch.nn.parameter.Parameter | ~torch.nn.Module] | None, optional):
+                additional parameters and modules to exclude. Defaults to None.
 
         Yields:
-            nn.Parameter: M-step parameter.
+            torch.nn.Parameter: M-step parameter.
         """
         for _, p in self.named_mstep_params(
             exclude_initial, default, manual_exclude, True

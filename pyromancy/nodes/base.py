@@ -119,6 +119,9 @@ class Node(nn.Module, ABC):
 
         Returns:
             ~torch.Tensor: elementwise error between its presumed state and a prediction.
+
+        Raises:
+            NotImplementedError: must be implemented by subclasses.
         """
         raise NotImplementedError
 

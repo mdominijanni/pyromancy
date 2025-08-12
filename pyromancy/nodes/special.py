@@ -50,7 +50,7 @@ class BiasNode(Node):
             ~torch.Tensor: the expanded bias
 
         Raises:
-            RuntimeError: shape of ``value`` is incompatible with the node.
+            ValueError: shape of ``value`` is incompatible with the node.
         """
         if not self.shapeobj.compat(*value.shape):
             raise ValueError(
@@ -148,7 +148,7 @@ class FixedNode(Node):
             ~torch.nn.parameter.Buffer: the reinitialized value.
 
         Raises:
-            RuntimeError: shape of ``value`` is incompatible with the node.
+            ValueError: shape of ``value`` is incompatible with the node.
         """
         if not self.shapeobj.compat(*value.shape):
             raise ValueError(

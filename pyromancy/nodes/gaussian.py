@@ -41,11 +41,11 @@ class AbstractGaussianNode(VariationalNode, ABC):
         Args:
             value (float | ~torch.Tensor): new covariance for the distribution.
 
-        Raises:
-            NotImplementedError: must be implemented by subclasses.
-
         Returns:
             ~torch.Tensor: covariance of the distribution.
+
+        Raises:
+            NotImplementedError: must be implemented by subclasses.
         """
         raise NotImplementedError
 
@@ -84,11 +84,11 @@ class StandardGaussianNode(ValueNodeMixin, AbstractGaussianNode):
         Args:
             value (float | ~torch.Tensor): new covariance for the distribution.
 
-        Raises:
-            RuntimeError: covariance is a fixed value.
-
         Returns:
             ~torch.Tensor: covariance of the distribution.
+
+        Raises:
+            RuntimeError: covariance is a fixed value.
         """
         return torch.eye(self.size, dtype=self.value.dtype, device=self.value.device)
 
@@ -193,6 +193,14 @@ class IsotropicGaussianNode(ValueNodeMixin, AbstractGaussianNode):
 
         Returns:
             ~torch.Tensor: covariance of the distribution.
+
+        Raises:
+            ValueError: ``covariance`` must be a scalar, vector, or square matrix,
+                with a corresponding number of elements.
+            ValueError: scalar variance must be positive.
+            ValueError: all elements of variance vector must be positive.
+            ValueError: covariance matrix must be symmetric and positive-definite.
+
 
         Note:
             Assigment of variances is performed as follows:
@@ -370,6 +378,13 @@ class FactorizedGaussianNode(ValueNodeMixin, AbstractGaussianNode):
 
         Returns:
             ~torch.Tensor: covariance of the distribution.
+
+        Raises:
+            ValueError: ``covariance`` must be a scalar, vector, or square matrix,
+                with a corresponding number of elements.
+            ValueError: scalar variance must be positive.
+            ValueError: all elements of variance vector must be positive.
+            ValueError: covariance matrix must be symmetric and positive-definite.
 
         Note:
             Assigment of variances is performed as follows:
@@ -563,6 +578,13 @@ class MultivariateGaussianNode(ValueNodeMixin, AbstractGaussianNode):
 
         Returns:
             ~torch.Tensor: covariance of the distribution.
+
+        Raises:
+            ValueError: ``covariance`` must be a scalar, vector, or square matrix,
+                with a corresponding number of elements.
+            ValueError: scalar variance must be positive.
+            ValueError: all elements of variance vector must be positive.
+            ValueError: covariance matrix must be symmetric and positive-definite.
 
         Note:
             Assigment of covariances is performed as follows:

@@ -2,7 +2,7 @@ import functools
 import math
 import types
 from collections.abc import Callable, Iterator, Mapping, MutableMapping
-from typing import Any, Type, overload
+from typing import Any, overload
 
 import einops as ein
 import torch
@@ -15,6 +15,11 @@ class Shape:
     Args:
         *shape (int | None): dimensions of the tensor, either positive integers for
             fixed dimensions or none for unspecified dimensions.
+
+    Raises:
+        ValueError: ``shape`` must contain at least one element.
+        TypeError: all elements of ``shape`` must be integers or None.
+        ValueError: integer elements of ``shape`` must be positive.
 
     Important:
         Scalar tensors (i.e. tensors with no dimensions) are unsupported, as are tensors
@@ -142,6 +147,10 @@ class Shape:
 
         Returns:
             bool: if the shape is compatible.
+
+        Raises:
+            TypeError: all elements of ``shape`` must be integers or None.
+            ValueError: integer elements of ``shape`` must be positive.
         """
         if not all(isinstance(d, int) for d in shape):
             raise TypeError("all elements of `shape` must be of type `int`")
@@ -162,6 +171,10 @@ class Shape:
 
         Returns:
             tuple[int, ...]: shape with the placeholder dimensions filled.
+
+        Raises:
+            TypeError: all elements of ``fill`` must be integers.
+            ValueError: elements of ``fill`` must be positive.
         """
         if not len(fill) == self.nvirtual:
             raise ValueError(
@@ -179,7 +192,8 @@ class Shape:
         return tuple(shape)  # type: ignore
 
     def coalesce(self, tensor: torch.Tensor) -> tuple[torch.Tensor, dict[str, int]]:
-        r"""Coalesces a tensor into a matrix, with placeholder dimensions first and fixed dimensions second.
+        r"""Coalesces a tensor into a matrix, with placeholder dimensions first and
+        fixed dimensions second.
 
         For a tensor with :math:`V_1, \ldots, V_m` placeholder dimensions and
         :math:`C_1, \ldots, C_n` fixed dimensions, the output matrix will have a shape of
@@ -213,12 +227,12 @@ class LambdaModule(nn.Module):
     r"""Wrapper module for a Callable.
 
     Args:
-        fn (Callable): callable to wrap.
-        *args (Any): prepended positional arguments for ``fn``.
-        *kwargs (Any): appended keyword arguments for ``fn``.
+        fn (~collections.abc.Callable): callable to wrap.
+        *args (~typing.Any): prepended positional arguments for ``fn``.
+        *kwargs (~typing.Any): appended keyword arguments for ``fn``.
 
     Raises:
-        TypeError: ``fn`` must be a ``~collections.abc.Callable``.
+        TypeError: ``fn`` must be a :py:class:`~collections.abc.Callable`.
 
     Tip:
         The behavior for ``*args`` and ``**kwargs`` mirrors that of
@@ -267,9 +281,9 @@ class TypedModuleDict[T: nn.Module](nn.Module, MutableMapping):
     for the type of permitted submodules to be narrowed.
 
     Args:
-        modules (Mapping[str, T] | None, optional): initial modules to add along with
-            their names. Defaults to ``None``.
-        narrowing (Type[T], optional): subclass to narrow inserted modules to.
+        modules (~collections.abc.Mapping[str, T] | None, optional): initial modules to
+            add along with their names. Defaults to None.
+        narrowing (type[T], optional): subclass to narrow inserted modules to.
             Defaults to :py:class:`~torch.nn.Module`.
 
     Raises:
@@ -277,10 +291,10 @@ class TypedModuleDict[T: nn.Module](nn.Module, MutableMapping):
     """
 
     _modules: dict[str, T]  # type: ignore[assignment]
-    _modtype: Type[T]
+    _modtype: type[T]
 
     def __init__(
-        self, modules: Mapping[str, T] | None = None, narrowing: Type[T] = nn.Module
+        self, modules: Mapping[str, T] | None = None, narrowing: type[T] = nn.Module
     ) -> None:
         if not issubclass(narrowing, nn.Module):
             raise TypeError(

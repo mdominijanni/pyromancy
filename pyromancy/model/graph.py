@@ -16,8 +16,8 @@ class GraphSpec[T: Hashable]:
 
     Args:
         graph (~networkx.DiGraph): underlying directed graph.
-        node_order (Sequence[T]): ordering of nodes.
-        edge_order (Sequence[tuple[T, T]]): ordering of edges.
+        node_order (~collections.abc.Sequence[T]): ordering of nodes.
+        edge_order (~collections.abc.Sequence[tuple[T, T]]): ordering of edges.
 
     Raises:
         RuntimeError: ``graph`` must have exactly one weakly connected component.
@@ -117,9 +117,9 @@ class GraphSpec[T: Hashable]:
 
         Args:
             reverse_node_order (bool, optional): if the order of nodes should also
-                be reversed. Defaults to ``False``.
+                be reversed. Defaults to False.
             reverse_edge_order (bool, optional): if the order of edges should also
-                be reversed. Defaults to ``False``.
+                be reversed. Defaults to False.
 
         Returns:
             GraphSpec: new ``GraphSpec`` with the graph edges reversed.
@@ -188,7 +188,7 @@ class GraphSpec[T: Hashable]:
         r"""Sort nodes into the specified ordering.
 
         Args:
-            nodes (Iterable[T]): nodes to sort.
+            nodes (~collections.abc.Iterable[T]): nodes to sort.
 
         Returns:
             list[T]: sorted nodes.
@@ -202,7 +202,7 @@ class GraphSpec[T: Hashable]:
         r"""Sort edges into the specified ordering.
 
         Args:
-            edges (Iterable[tuple[T, T]]): edges to sort.
+            edges (~collections.abc.Iterable[tuple[T, T]]): edges to sort.
 
         Returns:
             list[tuple[T, T]]: sorted edges.
@@ -308,11 +308,11 @@ class Graph(nn.Module):
     r"""Predictive coding graph.
 
     Args:
-        nodes (Mapping[str, ~pyromancy.nodes.Node]): nodes in the graph, mapped by a
-            string identifier.
-        edges (Mapping[tuple[str, str], ~torch.nn.Module]): edges in the graph, representing
-            connections between nodes, mapped by a tuple ``(source, target)``.
-        joins (Mapping[str, Callable[[tuple[~torch.Tensor, ...]], ~torch.Tensor]] | None, optional):
+        nodes (~collections.abc.Mapping[str, ~pyromancy.nodes.Node]): nodes in the graph,
+            mapped by a string identifier.
+        edges (~collections.abc.Mapping[tuple[str, str], ~torch.nn.Module]): edges in the graph,
+            representing connections between nodes, mapped by a tuple ``(source, target)``.
+        joins (~collections.abc.Mapping[str, ~collections.abc.Callable[[tuple[~torch.Tensor, ...]], ~torch.Tensor]] | None, optional):
             method for joining multiple inputs for a node into a single prediction. Defaults to None.
 
     Raises:
@@ -330,7 +330,7 @@ class Graph(nn.Module):
         The values of the ``joins`` argument can be instances of :py:class:`~torch.nn.Module`
         and their E-step and M-step parameters will be retrieved from :py:class:`GraphExecutor`.
         Internally, any join that is not a :py:class:`~torch.nn.Module` will be wrapped
-        with a :py:class:`LambdaModule`.
+        with a :py:class:`~pyromancy.LambdaModule`.
 
     Important:
         The tuple of tensors passed to each join are given in the same order as the
@@ -492,7 +492,7 @@ class Graph(nn.Module):
             target (str): name of the node receiving output from the edge.
 
         Returns:
-            nn.Module: graph edge between the source and target nodes.
+            ~torch.nn.Module: graph edge between the source and target nodes.
         """
         return self.edges[self.edgekey(source, target)]
 
@@ -503,7 +503,7 @@ class Graph(nn.Module):
             node (str): name of the node.
 
         Returns:
-            nn.Module: graph join for the given node.
+            ~torch.nn.Module: graph join for the given node.
         """
         return self.joins[node]
 
@@ -517,7 +517,7 @@ class Graph(nn.Module):
         r"""Computes the energy of the network.
 
         Returns:
-            torch.Tensor: energy of the network.
+            ~torch.Tensor: energy of the network.
 
         Important:
             The output energy is not reduced along the batch dimension.
