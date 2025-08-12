@@ -514,10 +514,10 @@ class Graph(nn.Module):
             node.reset()
 
     def energy(self) -> torch.Tensor:
-        r"""Computes the variational free energy of the network.
+        r"""Computes the energy of the network.
 
         Returns:
-            torch.Tensor: variational free energy of the network.
+            torch.Tensor: energy of the network.
 
         Important:
             The output energy is not reduced along the batch dimension.

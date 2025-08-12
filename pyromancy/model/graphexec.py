@@ -387,7 +387,7 @@ class GraphTrace:
 @eparameters()
 @mparameters()
 class GraphExecutor(nn.Module):
-    r"""Provides functionality to execute predictive coding graphs
+    r"""Provides functionality for executing predictive coding graphs.
 
     Args:
         graph (Graph): graph over which to execute.
@@ -399,11 +399,16 @@ class GraphExecutor(nn.Module):
     Raises:
         RuntimeError: ``graph`` and ``trace`` have incompatible
             :py:class:`~pyromancy.model.GraphSpec` objects.
+
+    Caution:
+        If ``trace`` contains nodes without a known resolution strategy, i.e., those
+        returned by ``trace.unknown``, then :py:meth:`GraphExecutor.init` and
+        :py:meth:`GraphExecutor.forward` will not fully initialize the graph.
     """
 
     graph: Graph
     _trace: GraphTrace
-    _energynodes: list[GraphNodeView]
+    _energy_nodes: list[GraphNodeView]
 
     def __init__(self, graph: Graph, trace: GraphTrace) -> None:
         if graph.spec != trace.spec:
@@ -413,28 +418,63 @@ class GraphExecutor(nn.Module):
 
         self.graph = graph
         self._trace = trace
-        self._energynodes = []
+        self._energy_nodes = []
 
         g = self._trace.spec.graph
         for node in ChainMap(*reversed(self._trace.process)):
             has_pred = len(tuple(g.predecessors(node))) > 0
-            if not isinstance(self.graph.node(node), PredictiveNode) or not has_pred:
-                self._energynodes.append(self.graph.nodeview(node))
+            if isinstance(self.graph.node(node), PredictiveNode) and has_pred:
+                self._energy_nodes.append(self.graph.nodeview(node))
 
     @property
     def required_inits(self) -> KeysView[str]:
+        r"""Nodes requiring an initial value.
+
+        Returns:
+            KeysView[str]: nodes requiring an initial value.
+
+        Note:
+            These are specified by the :py:class:`GraphTrace` used to construct
+            the :py:class:`GraphExecutor`.
+        """
         return self._trace.initial
 
     @property
     def required_hints(self) -> KeysView[str]:
+        r"""Nodes requiring an initial hint.
+
+        Returns:
+            KeysView[str]: nodes requiring an initial hint.
+
+        Note:
+            These are specified by the :py:class:`GraphTrace` used to construct
+            the :py:class:`GraphExecutor` and are the result of cyclic dependencies.
+        """
         return self._trace.required
 
     def named_estep_params(
         self,
         exclude_initial: bool = True,
+        default: bool = False,
         manual_exclude: Sequence[nn.Parameter | nn.Module] | None = None,
         remove_duplicate=True,
     ) -> Iterator[tuple[str, nn.Parameter]]:
+        r"""Returns an iterator over E-step parameters, yielding both the name of the parameter and the parameter itself.
+
+        Args:
+            exclude_initial (bool, optional): if initializing nodes, joins, and
+                edges where both endpoints are initializing nodes should be excluded.
+                Defaults to True.
+            default (bool, optional): if unspecified parameters should default to E-step parameters.
+                Defaults to False.
+            manual_exclude (Sequence[nn.Parameter | nn.Module] | None, optional): additional
+                parameters and modules to exclude. Defaults to None.
+            remove_duplicate (bool, optional): if duplicated parameters should be excluded.
+                Defaults to True.
+
+        Yields:
+            tuple[str, nn.Parameter]: tuple containing the name and parameter.
+        """
         # set manual exclusions
         if manual_exclude is None:
             exclude = []
@@ -445,9 +485,7 @@ class GraphExecutor(nn.Module):
         if exclude_initial:
             g = self.graph.spec.graph
             exclude += [
-                self.graph.node(node)
-                for node in g.nodes
-                if node in self._trace.initial
+                self.graph.node(node) for node in g.nodes if node in self._trace.initial
             ]
             exclude += [
                 self.graph.edge(src, tgt)
@@ -455,30 +493,28 @@ class GraphExecutor(nn.Module):
                 if src in self._trace.initial and tgt in self._trace.initial
             ]
             exclude += [
-                self.graph.join(node)
-                for node in g.nodes
-                if node in self._trace.initial
+                self.graph.join(node) for node in g.nodes if node in self._trace.initial
             ]
 
         return iter(
             itertools.chain(
                 get_named_estep_params(
                     self.graph.nodes,
-                    default=False,
+                    default=default,
                     exclude=exclude,
                     prefix="graph.nodes",
                     remove_duplicate=remove_duplicate,
                 ),
                 get_named_estep_params(
                     self.graph.edges,
-                    default=False,
+                    default=default,
                     exclude=exclude,
                     prefix="graph.edges",
                     remove_duplicate=remove_duplicate,
                 ),
                 get_named_estep_params(
                     self.graph.joins,
-                    default=False,
+                    default=default,
                     exclude=exclude,
                     prefix="graph.joins",
                     remove_duplicate=remove_duplicate,
@@ -489,17 +525,51 @@ class GraphExecutor(nn.Module):
     def estep_params(
         self,
         exclude_initial: bool = True,
+        default: bool = False,
         manual_exclude: Sequence[nn.Parameter | nn.Module] | None = None,
     ) -> Iterator[nn.Parameter]:
-        for _, p in self.named_estep_params(exclude_initial, manual_exclude, True):
+        r"""Returns an iterator over E-step parameters.
+
+        Args:
+            exclude_initial (bool, optional): if initializing nodes, joins, and
+                edges where both endpoints are initializing nodes should be excluded.
+                Defaults to True.
+            default (bool, optional): if unspecified parameters should default to E-step parameters.
+                Defaults to False.
+            manual_exclude (Sequence[nn.Parameter | nn.Module] | None, optional): additional
+                parameters and modules to exclude. Defaults to None.
+
+        Yields:
+            nn.Parameter: E-step parameter.
+        """
+        for _, p in self.named_estep_params(
+            exclude_initial, default, manual_exclude, True
+        ):
             yield p
 
     def named_mstep_params(
         self,
         exclude_initial: bool = False,
+        default: bool = True,
         manual_exclude: Sequence[nn.Parameter | nn.Module] | None = None,
         remove_duplicate=True,
     ) -> Iterator[tuple[str, nn.Parameter]]:
+        r"""Returns an iterator over M-step parameters, yielding both the name of the parameter and the parameter itself.
+
+        Args:
+            exclude_initial (bool, optional): if initializing nodes, joins, and
+                edges where both endpoints are initializing nodes should be excluded.
+                Defaults to False.
+            manual_exclude (Sequence[nn.Parameter | nn.Module] | None, optional): additional
+                parameters and modules to exclude. Defaults to None.
+            default (bool, optional): if unspecified parameters should default to M-step parameters.
+                Defaults to True.
+            remove_duplicate (bool, optional): if duplicated parameters should be excluded.
+                Defaults to True.
+
+        Yields:
+            tuple[str, nn.Parameter]: tuple containing the name and parameter.
+        """
         # set manual exclusions
         if manual_exclude is None:
             exclude = []
@@ -510,9 +580,7 @@ class GraphExecutor(nn.Module):
         if exclude_initial:
             g = self.graph.spec.graph
             exclude += [
-                self.graph.node(node)
-                for node in g.nodes
-                if node in self._trace.initial
+                self.graph.node(node) for node in g.nodes if node in self._trace.initial
             ]
             exclude += [
                 self.graph.edge(src, tgt)
@@ -520,30 +588,28 @@ class GraphExecutor(nn.Module):
                 if src in self._trace.initial and tgt in self._trace.initial
             ]
             exclude += [
-                self.graph.join(node)
-                for node in g.nodes
-                if node in self._trace.initial
+                self.graph.join(node) for node in g.nodes if node in self._trace.initial
             ]
 
         return iter(
             itertools.chain(
                 get_named_mstep_params(
                     self.graph.nodes,
-                    default=True,
+                    default=default,
                     exclude=exclude,
                     prefix="graph.nodes",
                     remove_duplicate=remove_duplicate,
                 ),
                 get_named_mstep_params(
                     self.graph.edges,
-                    default=True,
+                    default=default,
                     exclude=exclude,
                     prefix="graph.edges",
                     remove_duplicate=remove_duplicate,
                 ),
                 get_named_mstep_params(
                     self.graph.joins,
-                    default=True,
+                    default=default,
                     exclude=exclude,
                     prefix="graph.joins",
                     remove_duplicate=remove_duplicate,
@@ -554,12 +620,30 @@ class GraphExecutor(nn.Module):
     def mstep_params(
         self,
         exclude_initial: bool = False,
+        default: bool = True,
         manual_exclude: Sequence[nn.Parameter | nn.Module] | None = None,
     ) -> Iterator[nn.Parameter]:
-        for _, p in self.named_mstep_params(exclude_initial, manual_exclude, True):
+        r"""Returns an iterator over M-step parameters.
+
+        Args:
+            exclude_initial (bool, optional): if initializing nodes, joins, and
+                edges where both endpoints are initializing nodes should be excluded.
+                Defaults to True.
+            default (bool, optional): if unspecified parameters should default to M-step parameters.
+                Defaults to True.
+            manual_exclude (Sequence[nn.Parameter | nn.Module] | None, optional): additional
+                parameters and modules to exclude. Defaults to None.
+
+        Yields:
+            nn.Parameter: M-step parameter.
+        """
+        for _, p in self.named_mstep_params(
+            exclude_initial, default, manual_exclude, True
+        ):
             yield p
 
     def reset(self) -> None:
+        r"""Resets nodes in the network."""
         for node in ChainMap(*reversed(self._trace.process)):
             self.graph.node(node).reset()
 
@@ -568,6 +652,17 @@ class GraphExecutor(nn.Module):
         initial: dict[str, torch.Tensor],
         hints: dict[str, torch.Tensor] | None = None,
     ) -> None:
+        r"""Initializes nodes in the network.
+
+        Args:
+            initial (dict[str, torch.Tensor]): values for the activations of
+                initializing nodes.
+            hints (dict[str, torch.Tensor] | None, optional): values for the
+                activations of nodes requiring hints. Defaults to None.
+
+        Raises:
+            RuntimeError: "internal trace contains an invalid ResolutionStrategy"
+        """
         if hints is None:
             hints = {}
 
@@ -592,8 +687,21 @@ class GraphExecutor(nn.Module):
             self.graph.node(target).init(self.graph.join(target)(inputs))
 
     def energy(self) -> torch.Tensor:
+        r"""Computes the energy of the network.
+
+        Returns:
+            torch.Tensor: energy of the network.
+
+        Important:
+            The output energy is not reduced along the batch dimension.
+
+        Note:
+            Nodes which are not instances of :py:class:`PredictiveNode` and therefore
+            do not have a defined energy calculation are automatically excluded, as
+            are nodes with no inputs.
+        """
         return ein.reduce(
-            [nv.energy for nv in self._energynodes], "n ... -> ...", "sum"
+            [nv.energy for nv in self._energy_nodes], "n ... -> ...", "sum"
         )
 
     def forward(
@@ -601,6 +709,21 @@ class GraphExecutor(nn.Module):
         initial: dict[str, torch.Tensor],
         hints: dict[str, torch.Tensor] | None = None,
     ) -> dict[str, torch.Tensor]:
+        r"""Computes a forward pass of the network.
+
+        Args:
+            initial (dict[str, torch.Tensor]): values for the activations of
+                initializing nodes.
+            hints (dict[str, torch.Tensor] | None, optional): values for the
+                activations of nodes requiring hints. Defaults to None.
+
+        Raises:
+            RuntimeError: "internal trace contains an invalid ResolutionStrategy"
+
+        Note:
+            Since this calls :py:meth:`~pyromancy.nodes.Node.forward` for each node,
+            it also initializes the node if it is in training mode.
+        """
         if hints is None:
             hints = {}
 
@@ -619,6 +742,8 @@ class GraphExecutor(nn.Module):
                         raise RuntimeError(
                             "internal trace contains an invalid ResolutionStrategy"
                         )
-            output[target] = self.graph.node(target)(self.graph.join(target)(inputs))
+            output[target] = self.graph.node(target)(
+                self.graph.join(target)(tuple(inputs))
+            )
 
         return output
