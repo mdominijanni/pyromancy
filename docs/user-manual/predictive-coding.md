@@ -11,14 +11,16 @@ Certain elements required for backprop however render it biologically implausibl
 ## Learning with Predictive Coding
 Unlike backprop, which treats the entire network as a single model to optimize. Predictive coding breaks this down by describing the global objective as a sum of local objectives. Then, gradient-based updates to the parameters and states of a predictive coding network (PCN) are based only on local interactions, while still performing global optimization. In PCNs, quantity being minimizing is the *variational free energy*.
 
-We assume that each node is modelling a variational distribution, and its local contribution to the free energy of the network is based on the log probability of the node's state and the prediction it receives. For a multivariate Gaussian distribution, with node state $\mathbf{x}$, prediction $\boldsymbol{\mu}$, and learned covariances $\boldsymbol{\Sigma}$, we use the following as the free energy.
+We assume that each node is modelling a variational distribution, and its local contribution to the energy of the network is based on the log probability of the node's state and the prediction it receives. For a multivariate Gaussian distribution, with node state $\mathbf{x}_\ell$, prediction $\boldsymbol{\mu}_\ell$, and learned covariances $\boldsymbol{\Sigma}_\ell$, we use the following as the energy.
 
-$$\mathcal{F} = \frac{1}{2} \left(
-(\mathbf{z} - \boldsymbol{\mu})
-\boldsymbol{\Sigma}^{-1} (\mathbf{z} - \boldsymbol{\mu})^\intercal
-+ \log \lvert\boldsymbol{\Sigma}\rvert \right) + C$$
+$$\mathcal{F}_\ell \approx \frac{1}{2} \left(
+(\mathbf{z}_\ell - \boldsymbol{\mu}_\ell)
+\boldsymbol{\Sigma}_\ell^{-1} (\mathbf{z}_\ell - \boldsymbol{\mu}_\ell)^\intercal
++ \log \lvert\boldsymbol{\Sigma}_\ell\rvert \right) + C$$
 
-Here, the term $C$ is constant and left out of the energy calculations and optimization. Note that when $\boldsymbol{\Sigma} = \mathbf{I}$, then this reduces to $\mathcal{F} = \frac{1}{2} \lVert \mathbf{x} - \boldsymbol{\mu} \rVert_2^2$.
+Here, the term $C$ is constant and left out of the energy calculations and optimization. Note that when $\boldsymbol{\Sigma}_\ell = \mathbf{I}$, then this reduces to $\mathcal{F}_\ell \approx \frac{1}{2} \lVert \mathbf{x}_\ell - \boldsymbol{\mu}_\ell \rVert_2^2$. Importantly, the energy of the system is the sum of energy terms for each layer.
+
+$$\mathcal{F} = \sum_\ell \mathcal{F}_\ell$$
 
 ## Constructing a PCN with Pyromancy
 Hierarchical PCNs take on a very similar form to feedforward neural networks (FNNs). Pyromancy uses the base class {py:class}`~pyromancy.nodes.Node` to represent these node states, and the variational distribution they are imposing. Normal trainable transformations (e.g. {py:class}`~torch.nn.Linear`, {py:class}`~torch.nn.Conv2d`) can then be used as edges between them, along with a nonlinear activation function. For a full working example, see the example: {ref}`tutorial-mnist-classifier-pcn`.
