@@ -269,8 +269,15 @@ class GraphNodeView:
 
         Returns:
             ~torch.Tensor: prediction for the value of the node.
+
+        Raises:
+            RuntimeError: predictions can only be generated for nodes with predecessors.
         """
-        return self._join([edge(node.activity) for node, edge in self._predecessors])
+        if not self._predecessors:
+            raise RuntimeError("cannot call `prediction` on a node without parents")
+        return self._join(
+            tuple(edge(node.activity) for node, edge in self._predecessors)
+        )
 
     @property
     def error(self) -> torch.Tensor:
@@ -293,7 +300,7 @@ class GraphNodeView:
                 support computing energy.
         """
         if not isinstance(self._node, PredictiveNode):
-            raise TypeError("only `PredictionNode` nodes support `energy()`")
+            raise TypeError("only `PredictionNode` nodes support `energy`")
         return self._node.energy(self.prediction)
 
 
@@ -461,7 +468,7 @@ class Graph(nn.Module):
             self.node(node),
             self.join(node),
             [
-                (self.nodes(pred), self.edges(pred, node))
+                (self.node(pred), self.edge(pred, node))
                 for pred in self._spec.predecessors(node)
             ],
         )
@@ -534,7 +541,9 @@ class Graph(nn.Module):
 
             # compute the energy from joint prediction
             pred = self.join(tgt)(
-                [self.edge(src, tgt)(self.node(src).activity) for src in predecessors]
+                tuple(
+                    self.edge(src, tgt)(self.node(src).activity) for src in predecessors
+                )
             )
             energy.append(node.energy(pred))
 

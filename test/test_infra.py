@@ -3,8 +3,12 @@ import random
 
 import pytest
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
-from pyromancy import Shape
+from pyromancy import LambdaModule, Shape
+
+from .common import kwaidentity
 
 
 class TestShape:
@@ -245,3 +249,30 @@ class TestShape:
 
         assert res.shape == data.shape
         assert torch.all(res == data)
+
+
+class TestLambdaModule:
+
+    def test_arg_order(self):
+        m = LambdaModule(kwaidentity, 2, 3, kwl="hello")
+        assert m(1, kwf="world")[0] == (2, 3, 1)
+
+    def test_kwarg_override(self):
+        m = LambdaModule(kwaidentity, kw1="hello", kw2="world")
+        assert m(42)[1] == {"kw1": "hello", "kw2": "world"}
+        assert m(42, kw2="earth")[1] == {"kw1": "hello", "kw2": "earth"}
+
+    def test_name_fn(self):
+        fn = F.linear
+        m = LambdaModule(fn)
+        assert repr(m) == f"LambdaModule({fn.__name__})"
+
+    def test_name_meth(self):
+        fn = nn.Linear(10, 3).forward
+        m = LambdaModule(fn)
+        assert repr(m) == f"LambdaModule({fn.__qualname__})"
+
+    def test_name_obj(self):
+        fn = nn.Linear(10, 3)
+        m = LambdaModule(fn)
+        assert repr(m) == f"LambdaModule(\n  {type(fn).__name__}\n  (fn): {repr(fn)}\n)"

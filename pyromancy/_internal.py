@@ -21,8 +21,8 @@ class _Poset[T: Hashable](MutableMapping):
         ``"b"`` to rank 0, and ``"c"`` to rank 2.
 
     Note:
-        This class duplicates the underlying storage into a "flat" and a "tall"
-        representation, prioritizing speed over space efficiency.
+        This class duplicates the underlying storage into "flat" and "tall"
+        representations, prioritizing speed over space efficiency.
     """
 
     _elems: list[dict[T, int]]

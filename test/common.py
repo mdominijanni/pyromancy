@@ -1,4 +1,5 @@
 import random
+from typing import Any
 
 
 def randshape(ndim: int, dmin: int, dmax: int, nvirtual: int) -> tuple[int | None, ...]:
@@ -16,3 +17,7 @@ def randshape(ndim: int, dmin: int, dmax: int, nvirtual: int) -> tuple[int | Non
         shape[d], shape[s] = shape[s], shape[d]
 
     return tuple(shape)
+
+
+def kwaidentity(*args, **kwargs) -> tuple[tuple[Any, ...], dict[str, Any]]:
+    return (args, kwargs)

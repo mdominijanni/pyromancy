@@ -1,8 +1,11 @@
+import einops as ein
 import networkx as nx
 import pytest
+import random
+import torch
 import torch.nn as nn
 
-from pyromancy.nodes import StandardGaussianNode
+from pyromancy.nodes import PredictiveNode, FloatNode, StandardGaussianNode
 from pyromancy.model import Graph, GraphSpec
 
 from .common import random_dag
@@ -351,3 +354,338 @@ class TestGraph:
                 ("n1", "n2"): nn.Linear(10, 10),
             },
         )
+
+    def test_spec(self):
+        dag = random_dag([f"n{n}" for n in range(7)], 0.2)
+
+        _nodes = [*dag.nodes]
+        _edges = [*dag.edges]
+
+        random.shuffle(_nodes)
+        random.shuffle(_edges)
+
+        def jsum(data: tuple[torch.Tensor, ...]) -> torch.Tensor:
+            if not data:
+                res = torch.empty(0)
+            else:
+                res = data[0]
+                for d in data[1:]:
+                    res = res + d
+
+            return res
+
+        g = Graph(
+            nodes={n: StandardGaussianNode(10) for n in _nodes},
+            edges={e: nn.Linear(10, 10) for e in _edges},
+            joins={n: jsum for n in _nodes if dag.in_degree(n) > 1},  # type: ignore
+        )
+
+        assert g.spec == GraphSpec(dag, _nodes, _edges)
+
+    def test_nodeview(self):
+        dag = random_dag([f"n{n}" for n in range(7)], 0.2)
+
+        _nodes = [*dag.nodes]
+        _edges = [*dag.edges]
+
+        random.shuffle(_nodes)
+        random.shuffle(_edges)
+
+        def jsum(data: tuple[torch.Tensor, ...]) -> torch.Tensor:
+            if not data:
+                res = torch.empty(0)
+            else:
+                res = data[0]
+                for d in data[1:]:
+                    res = res + d
+
+            return res
+
+        g = Graph(
+            nodes={n: StandardGaussianNode(10) for n in _nodes},
+            edges={e: nn.Linear(10, 10) for e in _edges},
+            joins={n: jsum for n in _nodes if dag.in_degree(n) > 1},  # type: ignore
+        )
+
+        spec = GraphSpec(dag, _nodes, _edges)
+
+        for n in _nodes:
+            nv = g.nodeview(n)
+            assert nv._node is g.node(n)
+            assert nv._join is g.join(n)
+            for (nv_pred, nv_edge), pred in zip(nv._predecessors, spec.predecessors(n)):
+                assert nv_pred is g.node(pred)
+                assert nv_edge is g.edge(pred, n)
+
+    def test_reset(self):
+        dag = random_dag([f"n{n}" for n in range(7)], 0.2)
+
+        _nodes = [*dag.nodes]
+        _edges = [*dag.edges]
+
+        random.shuffle(_nodes)
+        random.shuffle(_edges)
+
+        def jsum(data: tuple[torch.Tensor, ...]) -> torch.Tensor:
+            if not data:
+                res = torch.empty(0)
+            else:
+                res = data[0]
+                for d in data[1:]:
+                    res = res + d
+
+            return res
+
+        g = Graph(
+            nodes={n: StandardGaussianNode(10) for n in _nodes},
+            edges={e: nn.Linear(10, 10) for e in _edges},
+            joins={n: jsum for n in _nodes if dag.in_degree(n) > 1},  # type: ignore
+        )
+
+        for node in g.nodes.values():
+            node.init(torch.rand(5, 10))
+
+        assert all(tuple(node.activity.shape) == (5, 10) for node in g.nodes.values())
+
+        g.reset()
+
+        assert all(tuple(node.activity.shape) == (0,) for node in g.nodes.values())
+
+    def test_energy(self):
+        dag = random_dag([f"n{n}" for n in range(7)], 0.2)
+
+        _nodes = [*dag.nodes]
+        _edges = [*dag.edges]
+
+        random.shuffle(_nodes)
+        random.shuffle(_edges)
+
+        def jsum(data: tuple[torch.Tensor, ...]) -> torch.Tensor:
+            if not data:
+                res = torch.empty(0)
+            else:
+                res = data[0]
+                for d in data[1:]:
+                    res = res + d
+
+            return res
+
+        g = Graph(
+            nodes={n: StandardGaussianNode(10) for n in _nodes[:4]}
+            | {n: FloatNode(10) for n in _nodes[4:]},
+            edges={e: nn.Linear(10, 10) for e in _edges},
+            joins={n: jsum for n in _nodes if dag.in_degree(n) > 1},  # type: ignore
+        )
+
+        spec = GraphSpec(dag, _nodes, _edges)
+
+        for node in g.nodes.values():
+            node.init(torch.rand(5, 10))
+
+        energy = []
+        for tgt in spec.nodes():
+            node = g.node(tgt)
+            predecessors = spec.predecessors(tgt)
+
+            if not isinstance(node, PredictiveNode) or not predecessors:
+                continue
+
+            pred = g.join(tgt)(
+                tuple(g.edge(src, tgt)(g.node(src).activity) for src in predecessors)
+            )
+            energy.append(node.energy(pred))
+
+        energy = ein.reduce(energy, "n ... -> ...", "sum")
+
+        assert torch.allclose(energy, g.energy())
+
+
+class TestGraphNodeView:
+
+    def test_node(self):
+        dag = random_dag([f"n{n}" for n in range(7)], 0.2)
+
+        _nodes = [*dag.nodes]
+        _edges = [*dag.edges]
+
+        random.shuffle(_nodes)
+        random.shuffle(_edges)
+
+        def jsum(data: tuple[torch.Tensor, ...]) -> torch.Tensor:
+            if not data:
+                res = torch.empty(0)
+            else:
+                res = data[0]
+                for d in data[1:]:
+                    res = res + d
+
+            return res
+
+        g = Graph(
+            nodes={n: StandardGaussianNode(10) for n in _nodes[:4]}
+            | {n: FloatNode(10) for n in _nodes[4:]},
+            edges={e: nn.Linear(10, 10) for e in _edges},
+            joins={n: jsum for n in _nodes if dag.in_degree(n) > 1},  # type: ignore
+        )
+
+        assert all(g.nodeview(n).node is g.node(n) for n in _nodes)
+
+    def test_prediction(self):
+        dag = random_dag([f"n{n}" for n in range(7)], 0.2)
+
+        _nodes = [*dag.nodes]
+        _edges = [*dag.edges]
+
+        random.shuffle(_nodes)
+        random.shuffle(_edges)
+
+        def jsum(data: tuple[torch.Tensor, ...]) -> torch.Tensor:
+            if not data:
+                res = torch.empty(0)
+            else:
+                res = data[0]
+                for d in data[1:]:
+                    res = res + d
+
+            return res
+
+        g = Graph(
+            nodes={n: StandardGaussianNode(10) for n in _nodes[:4]}
+            | {n: FloatNode(10) for n in _nodes[4:]},
+            edges={e: nn.Linear(10, 10) for e in _edges},
+            joins={n: jsum for n in _nodes if dag.in_degree(n) > 1},  # type: ignore
+        )
+
+        spec = GraphSpec(dag, _nodes, _edges)
+
+        for node in g.nodes.values():
+            node.init(torch.rand(5, 10))
+
+        for n in _nodes:
+            nv = g.nodeview(n)
+
+            if dag.in_degree(n) <= 0:  # type: ignore
+                with pytest.raises(RuntimeError) as excinfo:
+                    _ = nv.prediction
+                assert "cannot call `prediction` on a node without parents" in str(
+                    excinfo.value
+                )
+                continue
+
+            pred = g.join(n)(
+                tuple(
+                    g.edge(src, n)(g.node(src).activity) for src in spec.predecessors(n)
+                )
+            )
+
+            assert torch.allclose(pred, nv.prediction)
+
+    def test_error(self):
+        dag = random_dag([f"n{n}" for n in range(7)], 0.2)
+
+        _nodes = [*dag.nodes]
+        _edges = [*dag.edges]
+
+        random.shuffle(_nodes)
+        random.shuffle(_edges)
+
+        def jsum(data: tuple[torch.Tensor, ...]) -> torch.Tensor:
+            if not data:
+                res = torch.empty(0)
+            else:
+                res = data[0]
+                for d in data[1:]:
+                    res = res + d
+
+            return res
+
+        g = Graph(
+            nodes={n: StandardGaussianNode(10) for n in _nodes[:4]}
+            | {n: FloatNode(10) for n in _nodes[4:]},
+            edges={e: nn.Linear(10, 10) for e in _edges},
+            joins={n: jsum for n in _nodes if dag.in_degree(n) > 1},  # type: ignore
+        )
+
+        spec = GraphSpec(dag, _nodes, _edges)
+
+        for node in g.nodes.values():
+            node.init(torch.rand(5, 10))
+
+        for n in _nodes:
+            node = g.node(n)
+            nv = g.nodeview(n)
+
+            if dag.in_degree(n) <= 0:  # type: ignore
+                with pytest.raises(RuntimeError) as excinfo:
+                    _ = nv.error
+                assert "cannot call `prediction` on a node without parents" in str(
+                    excinfo.value
+                )
+                continue
+
+            pred = g.join(n)(
+                tuple(
+                    g.edge(src, n)(g.node(src).activity) for src in spec.predecessors(n)
+                )
+            )
+
+            assert torch.allclose(node.error(pred), nv.error)
+
+    def test_energy(self):
+        dag = random_dag([f"n{n}" for n in range(7)], 0.2)
+
+        _nodes = [*dag.nodes]
+        _edges = [*dag.edges]
+
+        random.shuffle(_nodes)
+        random.shuffle(_edges)
+
+        def jsum(data: tuple[torch.Tensor, ...]) -> torch.Tensor:
+            if not data:
+                res = torch.empty(0)
+            else:
+                res = data[0]
+                for d in data[1:]:
+                    res = res + d
+
+            return res
+
+        g = Graph(
+            nodes={n: StandardGaussianNode(10) for n in _nodes[:4]}
+            | {n: FloatNode(10) for n in _nodes[4:]},
+            edges={e: nn.Linear(10, 10) for e in _edges},
+            joins={n: jsum for n in _nodes if dag.in_degree(n) > 1},  # type: ignore
+        )
+
+        spec = GraphSpec(dag, _nodes, _edges)
+
+        for node in g.nodes.values():
+            node.init(torch.rand(5, 10))
+
+        for n in _nodes:
+            node = g.node(n)
+            nv = g.nodeview(n)
+
+            if not isinstance(node, PredictiveNode):
+                with pytest.raises(TypeError) as excinfo:
+                    _ = nv.energy
+                assert "only `PredictionNode` nodes support `energy`" in str(
+                    excinfo.value
+                )
+                continue
+
+            if dag.in_degree(n) <= 0:  # type: ignore
+                with pytest.raises(RuntimeError) as excinfo:
+                    _ = nv.energy
+                assert "cannot call `prediction` on a node without parents" in str(
+                    excinfo.value
+                )
+                continue
+
+            pred = g.join(n)(
+                tuple(
+                    g.edge(src, n)(g.node(src).activity) for src in spec.predecessors(n)
+                )
+            )
+
+            assert torch.allclose(node.energy(pred), nv.energy)

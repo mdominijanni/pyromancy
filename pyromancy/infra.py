@@ -225,7 +225,7 @@ class LambdaModule(nn.Module):
         :py:func:`functools.partial`.
     """
 
-    _fn: Callable
+    fn: Callable
     _args: tuple[Any, ...]
     _kwargs: dict[str, Any]
 
@@ -234,21 +234,24 @@ class LambdaModule(nn.Module):
             raise TypeError("`fn` must be a `Callable`")
 
         nn.Module.__init__(self)
-        self._fn = fn
+        self.fn = fn
         self._args = args
         self._kwargs = {k: v for k, v in kwargs.items()}
 
         @functools.wraps(fn)
         def forward(self, *fargs, **fkwargs):
-            return self._fn(*self._args, *fargs, **(self._kwargs | fkwargs))
+            return self.fn(*self._args, *fargs, **(self._kwargs | fkwargs))
 
         self.forward = types.MethodType(forward, self)
 
     def extra_repr(self) -> str:
-        if isinstance(self._fn, types.MethodType):
-            name = self._fn.__qualname__
+        if isinstance(self.fn, types.MethodType):
+            name = self.fn.__qualname__
         else:
-            name = self._fn.__name__
+            try:
+                name = self.fn.__name__
+            except AttributeError:
+                name = type(self.fn).__name__
 
         return (
             f"{name}{', ' if self._args else ''}"
