@@ -1,3 +1,4 @@
+from itertools import repeat
 import math
 import torch
 import torch.nn as nn
@@ -144,14 +145,44 @@ class VarianceSchedule(nn.Module):
     def forward(
         self,
         x0: torch.Tensor,
-        step: int,
+        t: torch.Tensor | int,
         noise_or_gen: torch.Tensor | torch.Generator | None,
     ) -> torch.Tensor:
+        r"""Computes forward diffusion steps.
+
+        This draws samples the forward diffusion process as follows:
+
+        .. math::
+            \begin{aligned}
+                \mathbf{x}_t &\sim q(\mathbf{x}_t | \mathbf{x}_0) \\
+                \mathbf{x}_t &= \sqrt{\bar{\alpha}_t} \mathbf{x}_0
+                + \sqrt{1 - \bar{\alpha}_t} \boldsymbol{\epsilon}
+                &\boldsymbol{\epsilon} &\sim \mathcal{N}(\mathbf{0}, \mathbf{I})
+            \end{aligned}
+
+        Args:
+            x0 (torch.Tensor): data prior to any diffusion process, :math:`\mathbf{x}_0`.
+            t (torch.Tensor | int): time steps to sample from, :math:`t`. When given
+                as a tensor, it should either be 0-dimensional (a scalar) or
+                1-dimensional (a vector) matching the batch dimension of ``x0``.
+            noise_or_gen (torch.Tensor | torch.Generator | None): noise term,
+                :math:`\boldsymbol{\epsilon}`, or a generator to use for sampling it.
+
+        Returns:
+            torch.Tensor: diffused inputs, :math:`\mathbf{x}_t`.
+
+        Important:
+            When ``noise_or_gen`` is a :py:class:`~torch.Tensor`, it should have the same
+            shape as ``x0``, and should be on the same device and have the same data type.
+        """
         if not isinstance(noise_or_gen, torch.Tensor):
             noise_or_gen = torch.randn(
                 *x0.shape, generator=noise_or_gen, out=torch.empty_like(x0)
             )
-        return self.mean_scale[step] * x0 + self.var_scale[step] * noise_or_gen
+        if isinstance(t, torch.Tensor) and t.ndim == 1:
+            t = t.view(-1, *repeat(1, x0.ndim - 1))
+
+        return self.mean_scale[t] * x0 + self.var_scale[t] * noise_or_gen
 
 
 @torch.no_grad()
