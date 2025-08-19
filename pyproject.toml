@@ -7,7 +7,7 @@ name = "pyromancy-ai"
 dynamic = ["version"]
 description = "A Compact Library for Predictive Coding with PyTorch"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = "BSD-3-Clause"
 keywords = []
 authors = [{ name = "Marissa Dominijanni", email = "mdomini@buffalo.edu" }]

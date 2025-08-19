@@ -204,8 +204,8 @@ class Shape:
             tensor (~torch.Tensor): tensor to coalesce.
 
         Returns:
-            tuple[~torch.Tensor, dict[str, int]]: tuple of the coalesced tensor and the
-                required shape information to revert it.
+            tuple[~torch.Tensor, dict[str, int]]: tuple of the coalesced tensor and the \
+            required shape information to revert it.
         """
         pragma = ein.parse_shape(tensor, self._parseshp_str)
         return ein.rearrange(tensor, self._coalesce_str), pragma
