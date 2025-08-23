@@ -1,13 +1,15 @@
 from .scheduling import (
     VarianceSchedule,
-    constant_schedule,
-    linear_schedule,
-    cosine_schedule,
+    FixedGaussianSchedule,
+    ConstantGaussianSchedule,
+    LinearGaussianSchedule,
+    CosineGaussianSchedule,
 )
 
 __all__ = [
     "VarianceSchedule",
-    "constant_schedule",
-    "linear_schedule",
-    "cosine_schedule",
+    "FixedGaussianSchedule",
+    "ConstantGaussianSchedule",
+    "LinearGaussianSchedule",
+    "CosineGaussianSchedule",
 ]

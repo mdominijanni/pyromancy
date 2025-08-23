@@ -7,14 +7,23 @@
 ```
 
 ## Variance Scheduling
-
+### General
 ```{eval-rst}
 .. autosummary::
     :nosignatures:
     :toctree: generated
 
     VarianceSchedule
-    constant_schedule
-    linear_schedule
-    cosine_schedule
+```
+
+### Gaussian Diffusion
+```{eval-rst}
+.. autosummary::
+    :nosignatures:
+    :toctree: generated
+
+    FixedGaussianSchedule
+    ConstantGaussianSchedule
+    LinearGaussianSchedule
+    CosineGaussianSchedule
 ```
