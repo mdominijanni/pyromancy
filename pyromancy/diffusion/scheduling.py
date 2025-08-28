@@ -6,7 +6,7 @@ import torch.nn as nn
 from typing import Any
 
 
-class VarianceSchedule(nn.Module, ABC):
+class DiffusionSchedule(nn.Module, ABC):
 
     def __init__(self) -> None:
         nn.Module.__init__(self)
@@ -66,8 +66,37 @@ class VarianceSchedule(nn.Module, ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def forward(
+        self,
+        x: torch.Tensor,
+        t: torch.Tensor | int,
+        pred: torch.Tensor | None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> torch.Tensor:
+        r"""Computes either a forward or reverse diffusion step.
 
-class FixedGaussianSchedule(VarianceSchedule):
+        Args:
+            x (torch.Tensor): data to perform forward or reverse diffusion on.
+            t (torch.Tensor | int): time to diffuse out to or the time the data has
+                been diffused to.
+            pred (torch.Tensor | None): model's prediction of the noise.
+
+        Returns:
+            torch.Tensor: data modified by the forward or reverse diffusion process.
+
+        Raises:
+            NotImplementedError: must be implemented by subclasses.
+
+        Note:
+            When implementing this method, forward diffusion should be used when
+            ``pred`` is not specified, and reverse diffusion when it is.
+        """
+        raise NotImplementedError
+
+
+class FixedGaussianSchedule(DiffusionSchedule):
 
     betas: nn.Buffer
     sqrt_alphas_bar: nn.Buffer
@@ -89,7 +118,7 @@ class FixedGaussianSchedule(VarianceSchedule):
         if betas.max() > 1 or betas.min() < 0:
             raise ValueError("elements of `betas` must be between 0 and 1 (inclusive)")
 
-        VarianceSchedule.__init__(self)
+        DiffusionSchedule.__init__(self)
 
         with torch.no_grad():
             if zero_terminal_snr:
@@ -107,20 +136,22 @@ class FixedGaussianSchedule(VarianceSchedule):
 
             betas_tilde = torch.zeros_like(betas)
             betas_tilde[1:] = (
-                (1.0 - alphas_bar[:-1]) / (1.0 - alphas_bar[1:])
+                one_minus_alphas_bar[:-1] / one_minus_alphas_bar[1:]
             ) * betas[1:]
             sqrt_betas_tilde = betas_tilde.sqrt()
 
             rev_pred_scale = torch.zeros_like(betas)
             rev_pred_scale[1:] = betas[1:] / sqrt_one_minus_alphas_bar[1:]
 
-            rev_xt_scale = torch.ones_like(betas)
-            rev_xt_scale[1:] = (sqrt_alphas[1:] / betas[1:]) * betas_tilde[1:]
+            rev_xt_scale = torch.zeros_like(betas)
+            rev_xt_scale[1:] = (
+                sqrt_alphas[1:] * one_minus_alphas_bar[:-1]
+            ) / one_minus_alphas_bar[1:]
 
             rev_x0_scale = torch.zeros_like(betas)
             rev_x0_scale[1:] = (
-                sqrt_alphas_bar[:-1] / one_minus_alphas_bar[1:]
-            ) * betas_tilde[1:]
+                sqrt_alphas_bar[:-1] * betas[1:]
+            ) / one_minus_alphas_bar[1:]
 
         self.betas = nn.Buffer(betas)
         self.sqrt_alphas_bar = nn.Buffer(sqrt_alphas_bar)

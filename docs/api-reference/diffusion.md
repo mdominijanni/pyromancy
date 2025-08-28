@@ -13,7 +13,7 @@
     :nosignatures:
     :toctree: generated
 
-    VarianceSchedule
+    DiffusionSchedule
 ```
 
 ### Gaussian Diffusion

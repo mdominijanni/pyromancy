@@ -1,5 +1,5 @@
 from .scheduling import (
-    VarianceSchedule,
+    DiffusionSchedule,
     FixedGaussianSchedule,
     ConstantGaussianSchedule,
     LinearGaussianSchedule,
@@ -7,7 +7,7 @@ from .scheduling import (
 )
 
 __all__ = [
-    "VarianceSchedule",
+    "DiffusionSchedule",
     "FixedGaussianSchedule",
     "ConstantGaussianSchedule",
     "LinearGaussianSchedule",
