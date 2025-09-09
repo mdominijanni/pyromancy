@@ -670,22 +670,31 @@ class GraphExecutor(nn.Module):
         for target, ops in ChainMap(*reversed(self._trace.process)).items():
             inputs = []
             for res, source in ops:
-                match res:
-                    case ResolutionStrategy.INITIAL:
-                        inputs.append(initial[source])
-                    case ResolutionStrategy.HINTED:
-                        inputs.append(self.graph.edge(source, target)(hints[source]))
-                    case ResolutionStrategy.DERIVED:
-                        inputs.append(
-                            self.graph.edge(source, target)(
-                                self.graph.node(source).activity
+                try:
+                    match res:
+                        case ResolutionStrategy.INITIAL:
+                            inputs.append(initial[source])
+                        case ResolutionStrategy.HINTED:
+                            inputs.append(self.graph.edge(source, target)(hints[source]))
+                        case ResolutionStrategy.DERIVED:
+                            inputs.append(
+                                self.graph.edge(source, target)(
+                                    self.graph.node(source).activity
+                                )
                             )
-                        )
-                    case _:
-                        raise RuntimeError(
-                            "internal trace contains an invalid ResolutionStrategy"
-                        )
-            self.graph.node(target).init(self.graph.join(target)(inputs))
+                        case _:
+                            raise RuntimeError(
+                                "internal trace contains an invalid ResolutionStrategy"
+                            )
+                except Exception as e:
+                    e.add_note(f"Failed on Edge: {self.graph.edgekey(source, target)}")
+                    raise e
+
+            try:
+                self.graph.node(target).init(self.graph.join(target)(inputs))
+            except Exception as e:
+                e.add_note(f"Failed on Node/Join: {target}")
+                raise e
 
     def energy(self) -> torch.Tensor:
         r"""Computes the energy of the network.
@@ -732,19 +741,28 @@ class GraphExecutor(nn.Module):
         for target, ops in ChainMap(*reversed(self._trace.process)).items():
             inputs = []
             for res, source in ops:
-                match res:
-                    case ResolutionStrategy.INITIAL:
-                        inputs.append(initial[source])
-                    case ResolutionStrategy.HINTED:
-                        inputs.append(self.graph.edge(source, target)(hints[source]))
-                    case ResolutionStrategy.DERIVED:
-                        inputs.append(self.graph.edge(source, target)(output[source]))
-                    case _:
-                        raise RuntimeError(
-                            "internal trace contains an invalid ResolutionStrategy"
-                        )
-            output[target] = self.graph.node(target)(
-                self.graph.join(target)(tuple(inputs))
-            )
+                try:
+                    match res:
+                        case ResolutionStrategy.INITIAL:
+                            inputs.append(initial[source])
+                        case ResolutionStrategy.HINTED:
+                            inputs.append(self.graph.edge(source, target)(hints[source]))
+                        case ResolutionStrategy.DERIVED:
+                            inputs.append(self.graph.edge(source, target)(output[source]))
+                        case _:
+                            raise RuntimeError(
+                                "internal trace contains an invalid ResolutionStrategy"
+                            )
+                except Exception as e:
+                    e.add_note(f"Failed on Edge: {self.graph.edgekey(source, target)}")
+                    raise e
+
+            try:
+                output[target] = self.graph.node(target)(
+                    self.graph.join(target)(tuple(inputs))
+                )
+            except Exception as e:
+                e.add_note(f"Failed on Node/Join: {target}")
+                raise e
 
         return output
