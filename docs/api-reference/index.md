@@ -7,7 +7,6 @@
 pyromancy
 nodes
 model
-diffusion
 ```
 
 ## Package Overview
@@ -19,6 +18,3 @@ Contains the classes used to model various types of predictive coding nodes.
 
 ### {ref}`api-pyromancy-model`
 Contains the classes used to create a managed predictive coding network.
-
-### {ref}`api-pyromancy-diffusion`
-Contains utilities for assisting with the creation of denoising diffusion probabilistic models (DDPMs).
