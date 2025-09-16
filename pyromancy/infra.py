@@ -288,6 +288,10 @@ class TypedModuleDict[T: nn.Module](nn.Module, MutableMapping):
 
     Raises:
         TypeError: ``narrowing`` must specify a type of :py:class:`~torch.nn.Module`.
+
+    Note:
+        The modules are stored in an underlying ``dict``, so insertion order is preserved
+        as of Python 3.7.
     """
 
     _modules: dict[str, T]  # type: ignore[assignment]

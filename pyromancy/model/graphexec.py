@@ -11,13 +11,14 @@ import torch.nn as nn
 
 from .._internal import _Poset
 from ..nodes import PredictiveNode
-from ..utils import (
+from ..params import (
     eparameters,
     get_named_estep_params,
     get_named_mstep_params,
     mparameters,
 )
-from .graph import Graph, GraphNodeView, GraphSpec
+from .graph import Graph, GraphSpec
+from .nodes import NodeView
 
 
 def _bfs_reachable_from[T: Hashable](
@@ -409,7 +410,7 @@ class GraphExecutor(nn.Module):
 
     graph: Graph
     _trace: GraphTrace
-    _energy_nodes: list[GraphNodeView]
+    _energy_nodes: list[NodeView]
 
     def __init__(self, graph: Graph, trace: GraphTrace) -> None:
         if graph.spec != trace.spec:

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from ..utils import mparameters
+from ..params import mparameters
 from .base import Node, ValueNodeMixin
 
 

@@ -1,23 +1,37 @@
 from collections.abc import Callable, Iterator, Sequence
-from typing import Any, TypeVar
+from typing import TypeVar, overload
 
 import torch.nn as nn
 
 T = TypeVar("T")
 
 
-def _get_declared_estep_params(cls: type, /, *default: Any) -> dict[str, None] | Any:
-    r"""Get all declared E-step parameter names in the MRO chain.
+@overload
+def _get_declared_estep_params(obj: object | type, /) -> dict[str, None]: ...
+@overload  # noqa:E302
+def _get_declared_estep_params(
+    obj: object | type, /, *default: T
+) -> dict[str, None] | T: ...
+
+def _get_declared_estep_params(  # noqa:E302
+    obj: object | type, /, *default: T
+) -> dict[str, None] | T:
+    r"""Get all dynamic and declared E-step parameter names in the MRO chain.
 
     Args:
-        cls (type): class to find E-step parameters for.
-        default (~typing.Any, optional): default return value.
-            Defaults to an empty :py:class:`dict`.
+        obj (object | type): object or class to find E-step parameters for.
+        default (T, optional): default return value. Defaults to an empty :py:class:`dict`.
 
     Returns:
         dict[str, None] | None: E-step parameters names if any are declared, otherwise ``None``.
     """
     params: dict[str, None] = {}
+
+    if not isinstance(obj, type):
+        params |= obj.__dict__.get("_e_params_", {})
+        cls = type(obj)
+    else:
+        cls = obj
 
     for c in cls.__mro__:
         params |= c.__dict__.get("_e_params_", {})
@@ -28,18 +42,32 @@ def _get_declared_estep_params(cls: type, /, *default: Any) -> dict[str, None] |
         return params
 
 
-def _get_declared_mstep_params(cls: type, /, *default: Any) -> dict[str, None] | Any:
-    r"""Get all declared M-step parameter names in the MRO chain.
+@overload
+def _get_declared_mstep_params(obj: object | type, /) -> dict[str, None]: ...
+@overload  # noqa:E302
+def _get_declared_mstep_params(
+    obj: object | type, /, *default: T
+) -> dict[str, None] | T: ...
+
+def _get_declared_mstep_params(  # noqa:E302
+    obj: object | type, /, *default: T
+) -> dict[str, None] | T:
+    r"""Get all dynamic and declared M-step parameter names in the MRO chain.
 
     Args:
-        cls (type): class to find M-step parameters for.
-        default (~typing.Any, optional): default return value.
-            Defaults to an empty :py:class:`dict`.
+        obj (object | type): object or class to find M-step parameters for.
+        default (T, optional): default return value. Defaults to an empty :py:class:`dict`.
 
     Returns:
         dict[str, None] | None: M-step parameters names if any are declared, otherwise ``None``.
     """
     params: dict[str, None] = {}
+
+    if not isinstance(obj, type):
+        params |= obj.__dict__.get("_m_params_", {})
+        cls = type(obj)
+    else:
+        cls = obj
 
     for c in cls.__mro__:
         params |= c.__dict__.get("_m_params_", {})
@@ -48,6 +76,52 @@ def _get_declared_mstep_params(cls: type, /, *default: Any) -> dict[str, None] |
         return params if params else default[0]
     else:
         return params
+
+
+def set_dynamic_estep_params(obj: nn.Module, *attrs: str) -> None:
+    r"""Sets the E-step parameters for an object.
+
+    Args:
+        obj (nn.Module): object to set E-step parameters for.
+        *attrs (str): object attributes to register as E-step parameters.
+
+    Raises:
+        TypeError: ``obj`` must be a PyTorch :py:class:`~torch.nn.Module`.
+        TypeError: all elements of ``attrs`` must be strings.
+
+    Tip:
+        Generally this should just be set once in the initializer for an object,
+        where which parameters are trainable is based on that object's configuration.
+    """
+    if not isinstance(obj, nn.Module):
+        raise TypeError("`obj` must be of type `torch.nn.Module`")
+    if not all(isinstance(a, str) for a in attrs):
+        raise TypeError("all elements of `attrs` must be of type str")
+
+    obj._e_params_ = {a: None for a in attrs}  # type: ignore
+
+
+def set_dynamic_mstep_params(obj: nn.Module, *attrs: str) -> None:
+    r"""Sets the M-step parameters for an object.
+
+    Args:
+        obj (nn.Module): object to set M-step parameters for.
+        *attrs (str): object attributes to register as M-step parameters.
+
+    Raises:
+        TypeError: ``obj`` must be a PyTorch :py:class:`~torch.nn.Module`.
+        TypeError: all elements of ``attrs`` must be strings.
+
+    Tip:
+        Generally this should just be set once in the initializer for an object,
+        where which parameters are trainable is based on that object's configuration.
+    """
+    if not isinstance(obj, nn.Module):
+        raise TypeError("`obj` must be of type `torch.nn.Module`")
+    if not all(isinstance(a, str) for a in attrs):
+        raise TypeError("all elements of `attrs` must be of type str")
+
+    obj._m_params_ = {a: None for a in attrs}  # type: ignore
 
 
 def eparameters(*fields: str) -> Callable[[type[T]], type[T]]:
@@ -81,7 +155,7 @@ def eparameters(*fields: str) -> Callable[[type[T]], type[T]]:
 
         if "_e_params_" not in cls.__dict__:
             cls._e_params_ = {f: None for f in fields} | _get_declared_estep_params(cls)  # type: ignore
-            cls.__annotations__["_e_params_"] = dict[str, Any]
+            cls.__annotations__["_e_params_"] = dict[str, None]
 
         return cls
 
@@ -119,7 +193,7 @@ def mparameters(*fields: str) -> Callable[[type[T]], type[T]]:
 
         if "_m_params_" not in cls.__dict__:
             cls._m_params_ = {f: None for f in fields} | _get_declared_mstep_params(cls)  # type: ignore
-            cls.__annotations__["_m_params_"] = dict[str, Any]
+            cls.__annotations__["_m_params_"] = dict[str, None]
 
         return cls
 

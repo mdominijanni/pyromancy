@@ -15,7 +15,16 @@
 
     Graph
     GraphSpec
-    GraphNodeView
+```
+
+## Graph Nodes
+```{eval-rst}
+.. autosummary::
+    :nosignatures:
+    :toctree: generated
+
+    BackpropNode
+    NodeView
 ```
 
 ## Working with Predictive Coding Graphs

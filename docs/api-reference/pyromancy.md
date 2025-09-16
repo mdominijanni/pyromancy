@@ -16,7 +16,7 @@
     TypedModuleDict
 ```
 
-## Utilities
+## Parameter Management
 ```{eval-rst}
 .. autosummary::
     :nosignatures:

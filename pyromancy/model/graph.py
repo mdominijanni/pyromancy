@@ -1,12 +1,14 @@
 from __future__ import annotations
 from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from operator import itemgetter
+from typing import Any
 
 import einops as ein
 import networkx as nx
 import torch
 import torch.nn as nn
 
+from .nodes import NodeView
 from ..infra import LambdaModule, TypedModuleDict
 from ..nodes import Node, PredictiveNode
 
@@ -213,97 +215,6 @@ class GraphSpec[T: Hashable]:
         )
 
 
-class GraphNodeView:
-    r"""Intractable view of a Node inside of a Graph.
-
-    Args:
-        node (~pyromancy.nodes.Node): predictive coding node.
-        join (~torch.nn.Module): join operation for inputs.
-        predecessors (Sequence[tuple[~pyromancy.nodes.Node, ~torch.nn.Module]]): tuples of
-            ``(predecessor, edge)`` providing input to ``node``.
-
-    Raises:
-        TypeError: ``node`` must be of type :py:class:`~pyromancy.nodes.Node`.
-        TypeError: ``join`` must be of type :py:class:`~torch.nn.Module`.
-        TypeError: all elements of ``predecessors`` must be a ``tuple[Node, nn.Module]``.
-    """
-
-    _node: Node
-    _join: nn.Module
-    _predecessors: list[tuple[Node, nn.Module]]
-
-    def __init__(
-        self,
-        node: Node,
-        join: nn.Module,
-        predecessors: Sequence[tuple[Node, nn.Module]],
-    ) -> None:
-        if not isinstance(node, Node):
-            raise TypeError("`node` must be a `Node`")
-        if not isinstance(join, nn.Module):
-            raise TypeError("`join` must be an `nn.Module`")
-
-        self._node = node
-        self._join = join
-        self._predecessors = []
-
-        for pred, edge in predecessors:
-            if not isinstance(pred, Node) or not isinstance(edge, nn.Module):
-                raise TypeError(
-                    "elements of `predecessors` must be a `tuple[Node, nn.Module]`"
-                )
-            self._predecessors.append((pred, edge))
-
-    @property
-    def node(self) -> Node:
-        r"""Returns the predictive coding node.
-
-        Returns:
-            ~pyromancy.nodes.Node: predictive coding node.
-        """
-        return self._node
-
-    @property
-    def prediction(self) -> torch.Tensor:
-        r"""Returns the prediction for the value of the node.
-
-        Returns:
-            ~torch.Tensor: prediction for the value of the node.
-
-        Raises:
-            RuntimeError: predictions can only be generated for nodes with predecessors.
-        """
-        if not self._predecessors:
-            raise RuntimeError("cannot call `prediction` on a node without parents")
-        return self._join(
-            tuple(edge(node.activity) for node, edge in self._predecessors)
-        )
-
-    @property
-    def error(self) -> torch.Tensor:
-        r"""Returns the error between the prediction and the value of the node.
-
-        Returns:
-            ~torch.Tensor: error between the prediction and the value of the node.
-        """
-        return self._node.error(self.prediction)
-
-    @property
-    def energy(self) -> torch.Tensor:
-        r"""Returns the energy between the prediction and the value of the node.
-
-        Returns:
-            ~torch.Tensor: energy between the prediction and the value of the node.
-
-        Raises:
-            TypeError: only nodes of type :py:class:`~pyromancy.nodes.PredictionNode`
-                support computing energy.
-        """
-        if not isinstance(self._node, PredictiveNode):
-            raise TypeError("only `PredictionNode` nodes support `energy`")
-        return self._node.energy(self.prediction)
-
-
 class Graph(nn.Module):
     r"""Predictive coding graph.
 
@@ -312,7 +223,7 @@ class Graph(nn.Module):
             mapped by a string identifier.
         edges (~collections.abc.Mapping[tuple[str, str], ~torch.nn.Module]): edges in the graph,
             representing connections between nodes, mapped by a tuple ``(source, target)``.
-        joins (~collections.abc.Mapping[str, ~collections.abc.Callable[[tuple[~torch.Tensor, ...]], ~torch.Tensor]] | None, optional):
+        joins (~collections.abc.Mapping[str, ~collections.abc.Callable[[tuple[Any, ...]], ~torch.Tensor]] | None, optional):
             method for joining multiple inputs for a node into a single prediction. Defaults to None.
 
     Raises:
@@ -347,9 +258,7 @@ class Graph(nn.Module):
         self,
         nodes: Mapping[str, Node],
         edges: Mapping[tuple[str, str], nn.Module],
-        joins: (
-            Mapping[str, Callable[[tuple[torch.Tensor, ...]], torch.Tensor]] | None
-        ) = None,
+        joins: Mapping[str, Callable[[tuple[Any, ...]], torch.Tensor]] | None = None,
     ) -> None:
         if len(nodes) == 0:
             raise AttributeError("`nodes` cannot be empty")
@@ -444,7 +353,7 @@ class Graph(nn.Module):
             This does not check the validity of ``source``, ``target``, or the existence
             of an edge between the two.
         """
-        return source + " -> " + target
+        return f"({source} -> {target})"
 
     @property
     def spec(self) -> GraphSpec:
@@ -455,16 +364,16 @@ class Graph(nn.Module):
         """
         return self._spec
 
-    def nodeview(self, node: str) -> GraphNodeView:
+    def nodeview(self, node: str) -> NodeView:
         r"""View of a node on which operations can be performed based on the graph.
 
         Args:
             node (str): name of the node to retrieve.
 
         Returns:
-            GraphNodeView: view of a node on which operations can be performed based on the graph.
+            NodeView: view of a node on which operations can be performed based on the graph.
         """
-        return GraphNodeView(
+        return NodeView(
             self.node(node),
             self.join(node),
             [
@@ -512,6 +421,20 @@ class Graph(nn.Module):
         node: Node
         for node in self.nodes.values():
             node.reset()
+
+    def init(self, values: Mapping[str, torch.Tensor]) -> None:
+        r"""Initializes specified nodes.
+
+        Args:
+            values (~collections.abc.Mapping[str, ~torch.Tensor]): mapping of node
+                names to initializing values.
+        """
+        for node, value in values.items():
+            try:
+                self.node(node).init(value)
+            except Exception as e:
+                e.add_note(f"Failed on Node: '{node}'")
+                raise e
 
     def energy(self) -> torch.Tensor:
         r"""Computes the energy of the network.

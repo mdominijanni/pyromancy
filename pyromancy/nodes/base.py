@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 
 from ..infra import Shape
-from ..utils import eparameters, mparameters
+from ..params import eparameters, mparameters
 
 
 @eparameters()
