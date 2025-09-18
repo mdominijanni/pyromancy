@@ -27,6 +27,8 @@ class Shape:
     """
 
     _rawshape: tuple[int | None, ...]
+    _broadcastshape: tuple[int, ...]
+    _size: int
     _concrete_dims: tuple[int, ...]
     _virtual_dims: tuple[int, ...]
     _parseshp_str: str
@@ -42,6 +44,8 @@ class Shape:
             raise ValueError("all integer elements of `shape` must be positive")
 
         self._rawshape = tuple(int(s) if s is not None else None for s in shape)
+        self._broadcastshape = tuple(1 if s is None else s for s in self._rawshape)
+        self._size = math.prod(self._broadcastshape)
         self._concrete_dims = tuple(
             d for d, s in enumerate(self._rawshape) if s is not None
         )
@@ -101,7 +105,7 @@ class Shape:
         Returns:
             tuple[int | None, ...]: broadcastable tensor shape.
         """
-        return tuple(1 if s is None else s for s in self._rawshape)
+        return self._broadcastshape
 
     @property
     def size(self) -> int:
@@ -110,7 +114,7 @@ class Shape:
         Returns:
             int: minimal number of tensor elements.
         """
-        return math.prod(self.bshape)
+        return self._size
 
     @property
     def ndim(self) -> int:
@@ -190,6 +194,17 @@ class Shape:
             shape[d] = fill[n]
 
         return tuple(shape)  # type: ignore
+
+    def pragma(self, tensor: torch.Tensor) -> dict[str, int]:
+        r"""Gets the pragma required to disperse a coalesced.
+
+        Args:
+            tensor (torch.Tensor): dispered tensor to get the pragma for.
+
+        Returns:
+            dict[str, int]: pragma of the dispersed tensor.
+        """
+        return ein.parse_shape(tensor, self._parseshp_str)
 
     def coalesce(self, tensor: torch.Tensor) -> tuple[torch.Tensor, dict[str, int]]:
         r"""Coalesces a tensor into a matrix, with placeholder dimensions first and

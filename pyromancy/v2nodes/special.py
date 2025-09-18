@@ -1,0 +1,127 @@
+from typing import Any
+import torch
+import torch.nn as nn
+
+from ..params import mparameters, set_dynamic_estep_params
+from .base import Node
+
+
+@mparameters("bias")
+class BiasNode(Node):
+    r"""Trainable bias node for unsupervised predictive coding.
+
+    Args:
+        *shape (int | None): shape of the learned bias.
+
+    Attributes:
+        bias (~torch.nn.parameter.Parameter): learned bias :math:`\mathbf{b}`.
+    """
+
+    bias: nn.Parameter
+    _initshape: torch.Size
+
+    def __init__(self, *shape: int | None, **kwargs: Any) -> None:
+        Node.__init__(self, *shape, **kwargs)
+        self.bias = nn.Parameter(torch.empty(self.shape.bshape[1:]), True)
+        self._initshape = self.bias.unsqueeze(0).shape
+
+        with torch.no_grad():
+            self.bias.fill_(0.0)
+
+    @property
+    def activity(self) -> torch.Tensor:
+        r"""Activity of the node.
+
+        Args:
+            value (~torch.Tensor): value to set the activity to.
+
+        Returns:
+            ~torch.Tensor: activity of the node.
+        """
+        return self.bias.unsqueeze(0).expand(self._initshape)
+
+    @activity.setter
+    def activity(self, value: torch.Tensor) -> None:
+        if not self.shape.compat(*value.shape):
+            raise ValueError(
+                f"shape of `value` {(*value.shape,)} is incompatible "
+                f"with node shape {(*self.shape,)}"
+            )
+
+        self._initshape = value.shape
+
+    def prediction(self, *pred: torch.Tensor, **kwargs: Any) -> torch.Tensor:
+        r"""Expands the bias vector as the prediction for this node.
+
+        Args:
+            *pred (~torch.Tensor): predictions for the basis of initialization.
+            **kwargs (~typing.Any): subclass-specific keyword arguments.
+
+        Returns:
+            ~torch.Tensor: expanded bias vector.
+
+        Tip:
+            Only the first tensor in ``pred`` is used. It should have the desired shape,
+            including the batch dimension, to use for the returned bias. Only its shape
+            is used, so the tensor can have ``device="meta"``.
+        """
+        return self.bias.unsqueeze(0).expand_as(pred[0])
+
+    def reset(self, **kwargs: Any) -> None:
+        r"""Resets the node state."""
+        self._initshape = self.bias.unsqueeze(0).shape
+
+
+class InputNode(Node):
+    r"""Node for provided input for predictive coding.
+
+    Args:
+        *shape (int | None): base shape of the node's state.
+        trainable (bool, optional): if the node's state is updated on E-steps.
+            Defaults to False.
+
+    Attributes:
+        value (~torch.nn.parameter.Parameter): current value of the node.
+    """
+
+    value: nn.Parameter
+
+    def __init__(
+        self, *shape: int | None, trainable: bool = False, **kwargs: Any
+    ) -> None:
+        Node.__init__(self, *shape, **kwargs)
+
+        self.value = nn.Parameter(torch.empty(0), trainable)
+
+        if trainable:
+            set_dynamic_estep_params(self, "value")
+
+    @property
+    def activity(self) -> nn.Parameter:
+        r"""Activity of the node.
+
+        Args:
+            value (~torch.Tensor): value to set the activity to.
+
+        Returns:
+            ~torch.Tensor: activity of the node.
+        """
+        return self.value
+
+    @activity.setter
+    @torch.no_grad()
+    def activity(self, value: torch.Tensor) -> None:
+        if not self.shape.compat(*value.shape):
+            raise ValueError(
+                f"shape of `value` {(*value.shape,)} is incompatible "
+                f"with node shape {(*self.shape,)}"
+            )
+
+        self.value.data = self.value.data.new_empty(*value.shape)
+        self.value.copy_(value)
+
+    @torch.no_grad()
+    def reset(self, **kwargs) -> None:
+        r"""Resets the node state."""
+        self.zero_grad()
+        self.value.data = self.value.new_empty(0)

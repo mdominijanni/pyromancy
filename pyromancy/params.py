@@ -13,6 +13,7 @@ def _get_declared_estep_params(
     obj: object | type, /, *default: T
 ) -> dict[str, None] | T: ...
 
+
 def _get_declared_estep_params(  # noqa:E302
     obj: object | type, /, *default: T
 ) -> dict[str, None] | T:
@@ -26,18 +27,21 @@ def _get_declared_estep_params(  # noqa:E302
         dict[str, None] | None: E-step parameters names if any are declared, otherwise ``None``.
     """
     params: dict[str, None] = {}
+    found = False
 
     if not isinstance(obj, type):
-        params |= obj.__dict__.get("_e_params_", {})
-        cls = type(obj)
+        chain = (obj, *type(obj).__mro__)
     else:
-        cls = obj
+        chain = (*obj.__mro__,)
 
-    for c in cls.__mro__:
-        params |= c.__dict__.get("_e_params_", {})
+    for c in chain:
+        p = c.__dict__.get("_e_params_", None)
+        if p is not None:
+            params |= p
+            found = True
 
     if default:
-        return params if params else default[0]
+        return params if found else default[0]
     else:
         return params
 
@@ -48,6 +52,7 @@ def _get_declared_mstep_params(obj: object | type, /) -> dict[str, None]: ...
 def _get_declared_mstep_params(
     obj: object | type, /, *default: T
 ) -> dict[str, None] | T: ...
+
 
 def _get_declared_mstep_params(  # noqa:E302
     obj: object | type, /, *default: T
@@ -62,18 +67,21 @@ def _get_declared_mstep_params(  # noqa:E302
         dict[str, None] | None: M-step parameters names if any are declared, otherwise ``None``.
     """
     params: dict[str, None] = {}
+    found = False
 
     if not isinstance(obj, type):
-        params |= obj.__dict__.get("_m_params_", {})
-        cls = type(obj)
+        chain = (obj, *type(obj).__mro__)
     else:
-        cls = obj
+        chain = (*obj.__mro__,)
 
-    for c in cls.__mro__:
-        params |= c.__dict__.get("_m_params_", {})
+    for c in chain:
+        p = c.__dict__.get("_m_params_", None)
+        if p is not None:
+            params |= p
+            found = True
 
     if default:
-        return params if params else default[0]
+        return params if found else default[0]
     else:
         return params
 
