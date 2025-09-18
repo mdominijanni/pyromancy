@@ -48,13 +48,12 @@ class Node(nn.Module, ABC):
         """
         return self._shape.size
 
-    @property
     @abstractmethod
-    def activity(self) -> torch.Tensor:
+    def activity(self, **kwargs) -> torch.Tensor:
         r"""Activity of the node.
 
         Args:
-            value (~torch.Tensor): value to set the activity to.
+            **kwargs (~typing.Any): subclass-specific keyword arguments.
 
         Returns:
             ~torch.Tensor: activity of the node.
@@ -62,11 +61,6 @@ class Node(nn.Module, ABC):
         Raises:
             NotImplementedError: must be implemented by subclasses.
         """
-        raise NotImplementedError
-
-    @activity.setter
-    @abstractmethod
-    def activity(self, value: torch.Tensor) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -94,9 +88,11 @@ class Node(nn.Module, ABC):
 
         Returns:
             ~torch.Tensor: the node's initial activity.
+
+        Raises:
+            NotImplementedError: must be implemented by subclasses.
         """
-        self.activity = self.prediction(*pred, **kwargs)
-        return self.activity
+        raise NotImplementedError
 
     @abstractmethod
     def reset(self, **kwargs: Any) -> None:
@@ -211,12 +207,7 @@ class VariationalNode(PredictiveNode, ABC):
         Raises:
             NotImplementedError: must be implemented by subclasses.
         """
-        if sample:
-            self.activity = self.sample(*pred, generator=generator, **kwargs)
-        else:
-            self.activity = self.prediction(*pred, **kwargs)
-
-        return self.activity
+        raise NotImplementedError
 
     @abstractmethod
     def sample(
@@ -278,69 +269,3 @@ class VariationalNode(PredictiveNode, ABC):
             return self.sample(*pred, generator=generator, **kwargs)
         else:
             return self.prediction(*pred, **kwargs)
-
-
-@eparameters("value")
-class ValueNodeMixin:
-    r"""Mixin for nodes where the activity is represented by a single tensor.
-
-    Attributes:
-        value (~torch.nn.parameter.Parameter): current value of the node.
-
-    Important:
-        In order for a class to inherit from this mixin, it must also inherit from
-        :py:class:`Node`. Additionally, `Node.__init__()` must be called prior to
-        `ValueNodeMixin.__init__()`.
-    """
-
-    value: nn.Parameter
-
-    def __init__(self, **kwargs: Any) -> None:
-        self.value = nn.Parameter(torch.empty(0), True)
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        if not issubclass(cls, Node):
-            raise TypeError(
-                f"{cls.__name__} must also inherit from Node to inherit "
-                "from ValueNodeMixin"
-            )
-
-    @property
-    def activity(self) -> nn.Parameter:
-        r"""Activity of the node.
-
-        Args:
-            value (~torch.Tensor): value to set the activity to.
-
-        Returns:
-            ~torch.Tensor: activity of the node.
-        """
-        return self.value
-
-    @activity.setter
-    @torch.no_grad()
-    def activity(self, value: torch.Tensor) -> None:
-        if not self.shape.compat(*value.shape):  # type: ignore
-            raise ValueError(
-                f"shape of `value` {(*value.shape,)} is incompatible "
-                f"with node shape {(*self.shape,)}"  # type: ignore
-            )
-
-        self.value.data = self.value.data.new_empty(*value.shape)
-        self.value.copy_(value)
-
-    @torch.no_grad()
-    def reset(self, **kwargs) -> None:
-        r"""Resets the node state.
-
-        This operation is typically executed after each new batch. With inference learning,
-        this is done after each M-step. With incremental inference learning, this is done
-        after the *final* M-step.
-
-        Args:
-            **kwargs (~typing.Any): subclass-specific keyword arguments.
-        """
-        # assert isinstance(self, Node)
-        self.zero_grad()  # type: ignore
-        self.value.data = self.value.new_empty(0)

@@ -186,7 +186,7 @@ class TestMultivariateGaussianNode:
 
         (grad,) = torch.autograd.grad(
             outputs=E,
-            inputs=node.activity,
+            inputs=node.activity(),
             grad_outputs=torch.ones_like(E),
         )
 
