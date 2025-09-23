@@ -7,6 +7,7 @@
 pyromancy
 nodes
 model
+v2nodes
 ```
 
 ## Package Overview
@@ -18,3 +19,6 @@ Contains the classes used to model various types of predictive coding nodes.
 
 ### {ref}`api-pyromancy-model`
 Contains the classes used to create a managed predictive coding network.
+
+### {ref}`api-pyromancy-v2nodes`
+Contains the classes used to model various types of predictive coding nodes.

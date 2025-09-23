@@ -8,6 +8,8 @@ from pyromancy import (
     get_mstep_params,
     get_named_estep_params,
     get_named_mstep_params,
+    set_dynamic_estep_params,
+    set_dynamic_mstep_params,
     mparameters,
 )
 
@@ -89,8 +91,8 @@ class ImproperlyInheritedEM(SpecifiedE, SpecifiedM):
 
     def __init__(self) -> None:
         nn.Module.__init__(self)
-        SpecifiedEMixin.__init__(self)
-        SpecifiedMMixin.__init__(self)
+        SpecifiedEMixin.__init__(self)  # type: ignore
+        SpecifiedMMixin.__init__(self)  # type: ignore
 
 
 class TestEParameters:
@@ -131,6 +133,30 @@ class TestMParameters:
         assert sol == res
 
 
+class TestDynamicEParameters:
+
+    def test_set_dynamic_estep_params(self):
+        m = SpecifiedEM()
+        set_dynamic_estep_params(m, "p1")
+
+        sol = {"p1": None}
+        res = m._e_params_
+
+        assert sol == res
+
+
+class TestDynamicMParameters:
+
+    def test_set_dynamic_mstep_params(self):
+        m = SpecifiedEM()
+        set_dynamic_mstep_params(m, "p2")
+
+        sol = {"p2": None}
+        res = m._m_params_
+
+        assert sol == res
+
+
 class TestGetNamedEStepParams:
 
     @pytest.mark.parametrize(
@@ -153,6 +179,19 @@ class TestGetNamedEStepParams:
 
         sol = {"e1": m.e1, "e2": m.e2, "inner.e1": m.inner.e1, "inner.e2": m.inner.e2}
         res = {n: p for n, p in get_named_estep_params(m, default=default)}
+
+        assert sol == res
+
+    def test_dynamic_eparam(self):
+        m = SpecifiedEM()
+        set_dynamic_estep_params(m, "p1")
+
+        sol = {
+            "e1": m.e1,
+            "e2": m.e2,
+            "p1": m.p1,
+        }
+        res = {n: p for n, p in get_named_estep_params(m, default=False)}
 
         assert sol == res
 
@@ -264,6 +303,15 @@ class TestGetEStepParams:
 
         assert sol == res
 
+    def test_dynamic_eparam(self):
+        m = SpecifiedEM()
+        set_dynamic_estep_params(m, "p1")
+
+        sol = {m.e1, m.e2, m.p1}
+        res = {*get_estep_params(m, default=False)}
+
+        assert sol == res
+
     @pytest.mark.parametrize(
         "default", (True, False), ids=("default=True", "default=False")
     )
@@ -371,6 +419,19 @@ class TestGetNamedMStepParams:
 
         assert sol == res
 
+    def test_dynamic_mparam(self):
+        m = SpecifiedEM()
+        set_dynamic_mstep_params(m, "p1")
+
+        sol = {
+            "m1": m.m1,
+            "m2": m.m2,
+            "p1": m.p1,
+        }
+        res = {n: p for n, p in get_named_mstep_params(m, default=False)}
+
+        assert sol == res
+
     @pytest.mark.parametrize(
         "default", (True, False), ids=("default=True", "default=False")
     )
@@ -471,6 +532,15 @@ class TestGetMStepParams:
 
         sol = {m.m1, m.m2, m.inner.m1, m.inner.m2}
         res = {*get_mstep_params(m, default=default)}
+
+        assert sol == res
+
+    def test_dynamic_mparam(self):
+        m = SpecifiedEM()
+        set_dynamic_mstep_params(m, "p1")
+
+        sol = {m.m1, m.m2, m.p1}
+        res = {*get_mstep_params(m, default=False)}
 
         assert sol == res
 

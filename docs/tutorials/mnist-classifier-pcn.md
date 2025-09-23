@@ -109,17 +109,17 @@ class PCN(nn.Module):
     @torch.no_grad()
     def init_x(self, x: torch.Tensor) -> None:
         self.reset()
-        z = self.nodes[0].init(x)
+        z = self.nodes[0].initialize(x)
         for node, edge in zip(self.nodes[1:], self.edges):
-            z = node.init(edge(z))
+            z = node.initialize(edge(z))
 
     @torch.no_grad()
     def init_xy(self, x: torch.Tensor, y: torch.Tensor) -> None:
         self.reset()
-        z = self.nodes[0].init(x)
+        z = self.nodes[0].initialize(x)
         for node, edge in zip(self.nodes[1:-1], self.edges[:-1]):
-            z = node.init(edge(z))
-        _ = self.nodes[-1].init(y)
+            z = node.initialize(edge(z))
+        _ = self.nodes[-1].initialize(y)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         mu = x
@@ -128,9 +128,9 @@ class PCN(nn.Module):
         return mu
 
     def energy(self) -> torch.Tensor:
-        vfe = self.nodes[0].value.new_zeros(self.nodes[0].value.size(0))
+        vfe = self.nodes[0].activity().new_zeros(self.nodes[0].activity().size(0))
 
-        mu = self.nodes[0].value
+        mu = self.nodes[0].activity()
         for node, edge in zip(self.nodes[1:], self.edges):
             mu = edge(mu)
             vfe.add_(node.energy(mu))
@@ -156,7 +156,7 @@ $$f(\mathbf{z}; \boldsymbol{\mu}) = \frac{1}{2} \lVert \mathbf{z} - \boldsymbol{
 
 The energy of the entire network is the sum of the individual energy terms.
 
-$$\mathcal{F} = \sum_\ell f(\mathbf{z}_\ell; \boldsymbol{\mu}_\ell)$$
+$$\mathcal{F} \approx \sum_\ell f(\mathbf{z}_\ell; \boldsymbol{\mu}_\ell)$$
 
 This total energy is the quantity minimized by training. The *inference learning* procedure for PCNs is a type of *expectation maximization* (EM). This divides the process in two: E-steps are repeatedly performed to compute states of the network that aren't fixed (the $\mathbf{z}$ terms), then M-steps perform an update to the trainable parameters of the network.
 
@@ -182,10 +182,11 @@ Finally, we create the training/testing loop over the dataset. Unlike for an FNN
 - Perform an M-step to refine *how* the predictions are generated.
 
 ```python
+nbatches = len(train_set) // batch_size
 accs = []
 
 for _ in tqdm(range(epochs), desc="Epoch", initial=0, total=epochs, position=0):
-    # set training mode
+    # set training mode and reset
     pcn.train()
 
     # load and sample training set
@@ -224,7 +225,7 @@ for _ in tqdm(range(epochs), desc="Epoch", initial=0, total=epochs, position=0):
         pcn.energy().mean().backward(inputs=m_opt.param_groups[0]["params"])
         m_opt.step()
 
-    # set inference mode
+    # set inference mode and reset
     pcn.eval()
 
     # load testing set

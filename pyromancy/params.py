@@ -278,10 +278,10 @@ def get_named_estep_params(
         modules = [(prefix, module)]
 
     for p, m in modules:
-        eparams = _get_declared_estep_params(type(m), None)
+        eparams = _get_declared_estep_params(m, None)
         if eparams is not None:
             eparams = frozenset(eparams)
-        mparams = _get_declared_mstep_params(type(m), None)
+        mparams = _get_declared_mstep_params(m, None)
         if mparams is not None:
             mparams = frozenset(mparams)
 
@@ -421,10 +421,10 @@ def get_named_mstep_params(
         modules = [(prefix, module)]
 
     for p, m in modules:
-        eparams = _get_declared_estep_params(type(m), None)
+        eparams = _get_declared_estep_params(m, None)
         if eparams is not None:
             eparams = frozenset(eparams)
-        mparams = _get_declared_mstep_params(type(m), None)
+        mparams = _get_declared_mstep_params(m, None)
         if mparams is not None:
             mparams = frozenset(mparams)
 

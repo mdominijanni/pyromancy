@@ -2,7 +2,7 @@ import functools
 import math
 import types
 from collections.abc import Callable, Iterator, Mapping, MutableMapping
-from typing import Any, overload
+from typing import Any, Literal, overload
 
 import einops as ein
 import torch
@@ -31,9 +31,14 @@ class Shape:
     _size: int
     _concrete_dims: tuple[int, ...]
     _virtual_dims: tuple[int, ...]
+    _all_dims: dict[str, int]
+    _event_dims: dict[str, int]
+    _plate_dims: dict[str, int]
     _parseshp_str: str
     _coalesce_str: str
     _disperse_str: str
+    _disperse_event_str: str
+    _disperse_plate_str: str
 
     def __init__(self, *shape: int | None) -> None:
         if not len(shape) > 0:
@@ -51,6 +56,10 @@ class Shape:
         )
         self._virtual_dims = tuple(d for d, s in enumerate(self._rawshape) if s is None)
 
+        self._all_dims = {f"d{d}": d for d, _ in enumerate(shape)}
+        self._event_dims = {f"d{d}": d for d, n in enumerate(shape) if n is not None}
+        self._plate_dims = {f"d{d}": d for d, n in enumerate(shape) if n is None}
+
         dims = tuple(f"d{d}" for d in range(len(self._rawshape)))
         cdims = tuple(f"d{d}" for d in self._concrete_dims)
         vdims = tuple(f"d{d}" for d in self._virtual_dims)
@@ -62,6 +71,8 @@ class Shape:
         self._disperse_str = (
             f"({' '.join(vdims)}) ({' '.join(cdims)}) -> {' '.join(dims)}"
         )
+        self._disperse_event_str = f"({' '.join(cdims)}) -> () {' '.join(cdims)}"
+        self._disperse_plate_str = f"({' '.join(vdims)}) -> {' '.join(vdims)} ()"
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({', '.join(str(d) for d in self._rawshape)})"
@@ -196,7 +207,7 @@ class Shape:
         return tuple(shape)  # type: ignore
 
     def pragma(self, tensor: torch.Tensor) -> dict[str, int]:
-        r"""Gets the pragma required to disperse a coalesced.
+        r"""Gets the pragma required to disperse a coalesced matrix.
 
         Args:
             tensor (torch.Tensor): dispered tensor to get the pragma for.
@@ -225,17 +236,53 @@ class Shape:
         pragma = ein.parse_shape(tensor, self._parseshp_str)
         return ein.rearrange(tensor, self._coalesce_str), pragma
 
-    def disperse(self, tensor: torch.Tensor, pragma: dict[str, int]) -> torch.Tensor:
+    def disperse(
+        self,
+        tensor: torch.Tensor,
+        pragma: dict[str, int],
+        mode: Literal["all", "plate", "event"] = "all",
+    ) -> torch.Tensor:
         r"""Disperses dimensions of a coalesced tensor to their original positions.
 
         Args:
             tensor (~torch.Tensor): tensor to disperse.
             pragma (dict[str, int]): shape information to revert the tensor.
+            mode (Literal["all", "plate", "event"], optional): the pattern used to
+                disperse elements back. Defaults to "all".
 
         Returns:
             ~torch.Tensor: dispersed tensor.
+
+        Raises:
+            ValueError: invalid ``mode`` specified.
+
+        Note:
+            The ``mode`` parameter specifies *what* is being dispersed. If the original
+            coalesced matrix is passed, use "all". If it is a vector of the coalesced
+            plate dimensions, use "plate". If it is a vector of the coalesced event
+            dimensions, use "event".
+
+        Tip:
+            When ``mode`` is "plate", a placeholder dimension will be appended, and when
+            it is "event", a placeholder dimension will be prepended.
         """
-        return ein.rearrange(tensor, self._disperse_str, **pragma)
+        match mode:
+            case "all":
+                return ein.rearrange(tensor, self._disperse_str, **pragma)
+            case "plate":
+                return ein.rearrange(
+                    tensor,
+                    self._disperse_plate_str,
+                    **{d: n for d, n in pragma.items() if d in self._plate_dims},
+                )
+            case "event":
+                return ein.rearrange(
+                    tensor,
+                    self._disperse_event_str,
+                    **{d: n for d, n in pragma.items() if d in self._event_dims},
+                )
+            case _:
+                raise ValueError(f"invalid `mode` of '{mode}' was specified")
 
 
 class LambdaModule(nn.Module):
