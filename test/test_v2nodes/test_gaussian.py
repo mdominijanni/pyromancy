@@ -52,7 +52,7 @@ class TestStandardGaussianNode:
     @pytest.mark.parametrize(
         "energyfn",
         ("nll", "kld", "ce"),
-        ids=("energyfn=NLL", "energyfn=KLD", "energyfn=CE"),
+        ids=("energyfn=nll", "energyfn=kld", "energyfn=ce"),
     )
     def test_energy(
         self,
@@ -101,7 +101,7 @@ class TestStandardGaussianNode:
     @pytest.mark.parametrize(
         "energyfn",
         ("nll", "kld", "ce"),
-        ids=("energyfn=NLL", "energyfn=KLD", "energyfn=CE"),
+        ids=("energyfn=nll", "energyfn=kld", "energyfn=ce"),
     )
     def test_energy_fullshape(
         self,
@@ -150,7 +150,7 @@ class TestStandardGaussianNode:
     @pytest.mark.parametrize(
         "energyfn",
         ("nll", "kld", "ce"),
-        ids=("energyfn=NLL", "energyfn=KLD", "energyfn=CE"),
+        ids=("energyfn=nll", "energyfn=kld", "energyfn=ce"),
     )
     def test_error(
         self,
@@ -352,7 +352,7 @@ class TestIsotropicGaussianNode:
     @pytest.mark.parametrize(
         "energyfn",
         ("nll", "kld", "ce"),
-        ids=("energyfn=NLL", "energyfn=KLD", "energyfn=CE"),
+        ids=("energyfn=nll", "energyfn=kld", "energyfn=ce"),
     )
     def test_energy(
         self,
@@ -402,7 +402,7 @@ class TestIsotropicGaussianNode:
     @pytest.mark.parametrize(
         "energyfn",
         ("nll", "kld", "ce"),
-        ids=("energyfn=NLL", "energyfn=KLD", "energyfn=CE"),
+        ids=("energyfn=nll", "energyfn=kld", "energyfn=ce"),
     )
     def test_energy_fullshape(
         self,
@@ -452,7 +452,7 @@ class TestIsotropicGaussianNode:
     @pytest.mark.parametrize(
         "energyfn",
         ("nll", "kld", "ce"),
-        ids=("energyfn=NLL", "energyfn=KLD", "energyfn=CE"),
+        ids=("energyfn=nll", "energyfn=kld", "energyfn=ce"),
     )
     def test_error(
         self,
@@ -671,7 +671,7 @@ class TestFactorizedGaussianNode:
     @pytest.mark.parametrize(
         "energyfn",
         ("nll", "kld", "ce"),
-        ids=("energyfn=NLL", "energyfn=KLD", "energyfn=CE"),
+        ids=("energyfn=nll", "energyfn=kld", "energyfn=ce"),
     )
     def test_energy(
         self,
@@ -721,7 +721,7 @@ class TestFactorizedGaussianNode:
     @pytest.mark.parametrize(
         "energyfn",
         ("nll", "kld", "ce"),
-        ids=("energyfn=NLL", "energyfn=KLD", "energyfn=CE"),
+        ids=("energyfn=nll", "energyfn=kld", "energyfn=ce"),
     )
     def test_energy_fullshape(
         self,
@@ -771,7 +771,7 @@ class TestFactorizedGaussianNode:
     @pytest.mark.parametrize(
         "energyfn",
         ("nll", "kld", "ce"),
-        ids=("energyfn=NLL", "energyfn=KLD", "energyfn=CE"),
+        ids=("energyfn=nll", "energyfn=kld", "energyfn=ce"),
     )
     def test_error(
         self,
@@ -990,7 +990,7 @@ class TestMultivariateGaussianNode:
     @pytest.mark.parametrize(
         "energyfn",
         ("nll", "kld", "ce"),
-        ids=("energyfn=NLL", "energyfn=KLD", "energyfn=CE"),
+        ids=("energyfn=nll", "energyfn=kld", "energyfn=ce"),
     )
     def test_energy(
         self,
@@ -1041,7 +1041,7 @@ class TestMultivariateGaussianNode:
     @pytest.mark.parametrize(
         "energyfn",
         ("nll", "kld", "ce"),
-        ids=("energyfn=NLL", "energyfn=KLD", "energyfn=CE"),
+        ids=("energyfn=nll", "energyfn=kld", "energyfn=ce"),
     )
     def test_energy_fullshape(
         self,
@@ -1092,7 +1092,7 @@ class TestMultivariateGaussianNode:
     @pytest.mark.parametrize(
         "energyfn",
         ("nll", "kld", "ce"),
-        ids=("energyfn=NLL", "energyfn=KLD", "energyfn=CE"),
+        ids=("energyfn=nll", "energyfn=kld", "energyfn=ce"),
     )
     def test_error(
         self,

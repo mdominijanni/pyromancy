@@ -1,5 +1,6 @@
 from .base import Node, PredictiveNode, VariationalNode
 from .special import BiasNode, InputNode
+from .categorical import CategoricalNode
 from .gaussian import (
     AbstractGaussianNode,
     StandardGaussianNode,
@@ -14,6 +15,7 @@ __all__ = [
     "VariationalNode",
     "BiasNode",
     "InputNode",
+    "CategoricalNode",
     "AbstractGaussianNode",
     "StandardGaussianNode",
     "IsotropicGaussianNode",

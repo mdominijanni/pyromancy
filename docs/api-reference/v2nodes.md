@@ -1,4 +1,5 @@
 (api-pyromancy-v2nodes)=
+
 # pyromancy.v2nodes
 
 ```{eval-rst}
@@ -17,6 +18,17 @@
     VariationalNode
 ```
 
+## Special Nodes
+
+```{eval-rst}
+.. autosummary::
+    :nosignatures:
+    :toctree: generated
+
+    BiasNode
+    InputNode
+```
+
 ## Gaussian Nodes
 
 ```{eval-rst}
@@ -31,13 +43,12 @@
     MultivariateGaussianNode
 ```
 
-## Special Nodes
+## Other Distributions
 
 ```{eval-rst}
 .. autosummary::
     :nosignatures:
     :toctree: generated
 
-    BiasNode
-    InputNode
+    CategoricalNode
 ```

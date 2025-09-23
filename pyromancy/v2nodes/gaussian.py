@@ -129,7 +129,7 @@ class StandardGaussianNode(AbstractGaussianNode):
     Assumes the covariance matrix is an identity matrix.
 
     .. math::
-        \boldsymbol{\Sigma} = \mathbf{I}
+        \boldsymbol{\Sigma} = I
 
     Args:
         *shape (int | None): shape of the node's learned state.
@@ -146,7 +146,7 @@ class StandardGaussianNode(AbstractGaussianNode):
         r"""Covariance matrix of the Gaussian distribution.
 
         .. math::
-            \boldsymbol{\Sigma} = \mathbf{I}
+            \boldsymbol{\Sigma} = I
 
         Args:
             value (float | ~torch.Tensor): new covariance for the distribution.
@@ -206,6 +206,14 @@ class StandardGaussianNode(AbstractGaussianNode):
 
             Since cross-entropy is evaluated in closed-form for multivariate Gaussians,
             this is equivalent to negative log-likelihood up to a constant.
+
+        Info:
+            The implementation of KL-divergence used here assumes distributions of
+            :math:`\mathcal{N}(\mathbf{z}, \boldsymbol{\Sigma})`
+            and :math:`\mathcal{N}(\boldsymbol{\mu}, \boldsymbol{\Sigma})`.
+            If the latter is assumed to be
+            :math:`\mathcal{N}(\boldsymbol{\mu}, I)`, it is the same as the negative
+            log-likelihood up to a constant.
         """
         # quadratic loss term (common to all methods)
         mu = self.prediction(pred, **kwargs)
@@ -284,7 +292,7 @@ class IsotropicGaussianNode(AbstractGaussianNode):
     Assumes the covariance matrix is a scalar matrix.
 
     .. math::
-        \boldsymbol{\Sigma} = \sigma\mathbf{I}
+        \boldsymbol{\Sigma} = \sigma I
 
     Args:
         *shape (int | None): shape of the node's learned state.
@@ -310,7 +318,7 @@ class IsotropicGaussianNode(AbstractGaussianNode):
         r"""Covariance matrix of the Gaussian distribution.
 
         .. math::
-            \boldsymbol{\Sigma} = \sigma\mathbf{I}
+            \boldsymbol{\Sigma} = \sigma I
 
         Args:
             value (float | ~torch.Tensor): new covariance for the distribution.
@@ -450,6 +458,14 @@ class IsotropicGaussianNode(AbstractGaussianNode):
 
             Since cross-entropy is evaluated in closed-form for multivariate Gaussians,
             this is equivalent to negative log-likelihood up to a constant.
+
+        Info:
+            The implementation of KL-divergence used here assumes distributions of
+            :math:`\mathcal{N}(\mathbf{z}, \boldsymbol{\Sigma})`
+            and :math:`\mathcal{N}(\boldsymbol{\mu}, \boldsymbol{\Sigma})`.
+            If the latter is assumed to be
+            :math:`\mathcal{N}(\boldsymbol{\mu}, I)`, it is the same as the negative
+            log-likelihood up to a constant.
         """
         # quadratic loss term (common to all methods)
         mu = self.prediction(pred, **kwargs)
@@ -700,6 +716,14 @@ class FactorizedGaussianNode(AbstractGaussianNode):
 
             Since cross-entropy is evaluated in closed-form for multivariate Gaussians,
             this is equivalent to negative log-likelihood up to a constant.
+
+        Info:
+            The implementation of KL-divergence used here assumes distributions of
+            :math:`\mathcal{N}(\mathbf{z}, \boldsymbol{\Sigma})`
+            and :math:`\mathcal{N}(\boldsymbol{\mu}, \boldsymbol{\Sigma})`.
+            If the latter is assumed to be
+            :math:`\mathcal{N}(\boldsymbol{\mu}, I)`, it is the same as the negative
+            log-likelihood up to a constant.
         """
         # quadratic loss term (common to all methods)
         mu = self.prediction(pred, **kwargs)
@@ -974,6 +998,14 @@ class MultivariateGaussianNode(AbstractGaussianNode):
 
             Since cross-entropy is evaluated in closed-form for multivariate Gaussians,
             this is equivalent to negative log-likelihood up to a constant.
+
+        Info:
+            The implementation of KL-divergence used here assumes distributions of
+            :math:`\mathcal{N}(\mathbf{z}, \boldsymbol{\Sigma})`
+            and :math:`\mathcal{N}(\boldsymbol{\mu}, \boldsymbol{\Sigma})`.
+            If the latter is assumed to be
+            :math:`\mathcal{N}(\boldsymbol{\mu}, I)`, it is the same as the negative
+            log-likelihood up to a constant.
         """
         # quadratic loss term (common to all methods)
         mu = self.prediction(pred, **kwargs)

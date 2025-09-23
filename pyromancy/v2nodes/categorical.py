@@ -1,7 +1,5 @@
-import math
 from typing import Any, Literal
 
-import einops as ein
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,6 +10,30 @@ from .base import VariationalNode
 
 @eparameters("logits")
 class CategoricalNode(VariationalNode):
+    r"""Categorical distribution parameterized by logits.
+
+    Args:
+        mask_probs (bool, optional): if zero values for input probabilities should
+            be masked to ``-inf``. Defaults to False.
+        eps_probs (float, optional): minimum values input probabilities will be
+            clamped to. Defaults to 1e-12.
+
+    Attributes:
+        logits (~torch.nn.parameter.Parameter): current value of the node
+            :math:`\log q`.
+
+    Raises:
+        ValueError: ``eps_probs`` must be nonnegative.
+
+    Important:
+        When ``mask_probs`` is True, then input probabilities are not bounded by
+        ``eps_probs``. In practice, this will lead to numerical issues under certain
+        conditions, such as when computing energy using KL-divergence.
+
+    Tip:
+        It is *strongly* recommended that probabilities are only passed in for
+        manual initialization, and that logits are passed in elsewhere.
+    """
 
     logits: nn.Parameter
     _mask_probs: bool
@@ -34,6 +56,14 @@ class CategoricalNode(VariationalNode):
         self._eps_probs = float(eps_probs)
 
     def _logits_to_probs(self, logits: torch.Tensor) -> torch.Tensor:
+        r"""Converts logits to probabilities.
+
+        Args:
+            logits (~torch.Tensor): unnormalized logits.
+
+        Returns:
+            torch.Tensor: softmax normalized probabilities.
+        """
         logits, pragma = self.shapeobj.coalesce(self.logits)
 
         probs = F.softmax(logits, dim=1)
@@ -42,6 +72,14 @@ class CategoricalNode(VariationalNode):
         return probs
 
     def _probs_to_logits(self, probs: torch.Tensor) -> torch.Tensor:
+        r"""Converts probabilities to logits.
+
+        Args:
+            probs (~torch.Tensor): normalized probabilities.
+
+        Returns:
+            torch.Tensor: unnormalized logits.
+        """
         if self._mask_probs:
             probs = probs.masked_fill(probs == 0, float("-inf"))
         else:
@@ -55,6 +93,16 @@ class CategoricalNode(VariationalNode):
     def _cdf_uniform_sample(
         self, probs: torch.Tensor, generator: torch.Generator | None = None
     ) -> torch.Tensor:
+        r"""Samples from a categorical distribution by taking the CDF.
+
+        Args:
+            probs (~torch.Tensor): normalized probabilities.
+            generator (~torch.Generator | None, optional): pseudorandom number generator
+                for sampling. Defaults to None.
+
+        Returns:
+            torch.Tensor: samples from the distribution.
+        """
         probs, pragma = self.shapeobj.coalesce(probs)
 
         cdf = probs.cumsum(1)
@@ -68,23 +116,6 @@ class CategoricalNode(VariationalNode):
 
         return y
 
-    def _gumbel_max_sample(
-        self,
-        logits: torch.Tensor,
-        generator: torch.Generator | None = None,
-    ) -> torch.Tensor:
-        logits, pragma = self.shapeobj.coalesce(logits)
-
-        gumbels = -torch.empty_like(logits).exponential_(generator=generator).log()
-        gumbels = logits + gumbels
-
-        idx = gumbels.argmax(dim=1)
-
-        y = torch.zeros_like(logits).scatter_(1, idx, 1.0)
-        y = self.shapeobj.disperse(y, pragma)
-
-        return y
-
     def _gumbel_softmax_sample(
         self,
         logits: torch.Tensor,
@@ -92,6 +123,18 @@ class CategoricalNode(VariationalNode):
         discrete: bool,
         generator: torch.Generator | None = None,
     ) -> torch.Tensor:
+        r"""Samples from a categorical distribution using the Gumbel—Softmax trick.
+
+        Args:
+            logits (~torch.Tensor): unnormalized logits.
+            tau (float): softmax temperature.
+            discrete (bool): if outputs should be discretized into one-hot vectors.
+            generator (~torch.Generator | None, optional): pseudorandom number generator
+                for sampling. Defaults to None.
+
+        Returns:
+            torch.Tensor: samples from the distribution.
+        """
         logits, pragma = self.shapeobj.coalesce(logits)
 
         gumbels = -torch.empty_like(logits).exponential_(generator=generator).log()
@@ -129,10 +172,85 @@ class CategoricalNode(VariationalNode):
         self,
         pred: torch.Tensor,
         from_logits: bool = True,
-        fn: Literal["kld", "ce"] = "ce",
+        fn: Literal["kld", "ce"] = "kld",
         **kwargs: Any,
     ) -> torch.Tensor:
-        pass
+        r"""Computes batchwise energy between predictions and the node's activity.
+
+        .. math::
+            \begin{aligned}
+                \mathcal{E}_\text{KL} &= \sum_k q(k)
+                \log \frac{q(k)}{p(k)} \\
+                \mathcal{E}_\text{CE} &= -\sum_k q(k) \log p(k)
+            \end{aligned}
+
+        Args:
+            pred (~torch.Tensor): prediction of the node's activity, :math:`p`
+                or :math:`\log p`.
+            from_logits (bool, optional): if the prediction should be interpreted
+                as raw logits rather than as probabilities. Defaults to True.
+            fn (Literal["kld", "ce"], optional): mode for computing the energy.
+                Defaults to "kld".
+
+        Returns:
+            ~torch.Tensor: batchwise energy between the activity and the predictions.
+
+        Raises:
+            ValueError: invalid ``fn`` specified.
+
+        Info:
+            The `fn` parameter controls how energy is computed.
+
+            - Kullback–Leibler Divergence ("kld"): the node's activity is treated as the
+              as the distribution's mean, and reverse KL-divergence is taken.
+            - Cross-Entropy ("ce"): the node's activity is treated as the
+              as the distribution's mean, and cross-entropy is taken.
+
+            Recall that KL-divergence and cross-entropy vary by the entropy of the left-hand
+            distribution.
+
+            .. math::
+                \operatorname{D}_\text{KL}(q \parallel p) = H(q, p) - H(q)
+        """
+        q_logits, pragma = self.shapeobj.coalesce(self.logits)
+        q_probs = F.softmax(q_logits, dim=1)
+
+        match fn:
+            case "kld":
+                if from_logits:
+                    p_logits, _ = self.shapeobj.coalesce(pred)
+                    Hqp = torch.logsumexp(p_logits, dim=1) - (p_logits * q_probs).sum(1)
+                else:
+                    p_probs, _ = self.shapeobj.coalesce(pred)
+                    Hqp = -torch.special.xlogy(q_probs, p_probs)
+
+                Hq = torch.logsumexp(q_logits, dim=1) - (q_logits * q_probs).sum(1)
+                E = Hqp - Hq
+
+            case "ce":
+                if from_logits:
+                    p_logits, _ = self.shapeobj.coalesce(pred)
+                    Hqp = torch.logsumexp(p_logits, dim=1) - (p_logits * q_probs).sum(1)
+                else:
+                    p_probs, _ = self.shapeobj.coalesce(pred)
+                    Hqp = -torch.special.xlogy(q_probs, p_probs)
+
+                E = Hqp
+
+            case _:
+                raise ValueError(f"invalid `fn` '{fn}' specified")
+
+        E = self.shapeobj.disperse(E, pragma, "plate")
+        return E.flatten(1).sum(1)
+
+    def error(
+        self,
+        pred: torch.Tensor,
+        from_logits: bool = True,
+        fn: Literal["kld", "ce"] = "kld",
+        **kwargs: Any,
+    ) -> torch.Tensor:
+        return torch.empty(0)
 
     @torch.no_grad()
     def initialize(
@@ -147,7 +265,7 @@ class CategoricalNode(VariationalNode):
         r"""Initializes the node's state.
 
         Args:
-            pred (torch.Tensor): prediction for the basis of initialization.
+            pred (~torch.Tensor): prediction for the basis of initialization.
             sample (bool, optional): if the activity should be initialized using
                 random sampling. Defaults to False.
             generator (~torch.Generator | None, optional): pseudorandom number generator
@@ -156,13 +274,12 @@ class CategoricalNode(VariationalNode):
                 as raw logits rather than as probabilities. Defaults to True.
             as_logits (bool, optional): if the activity should be returned as logits
                 rather than as probabilities. Defaults to False.
-            procedure (Literal["cdf-uniform", "gumbel-max", "gumbel-softmax-continuous", "gumbel-softmax-discrete"], optional):
+            procedure (Literal["cdf-uniform", "gumbel-softmax"], optional):
                 sampling procedure to use when ``sample=True``. Defaults to "gumbel-softmax-continuous".
             temperature (float, optional): softmax temperature used by Gumbel–Softmax methods.
                 Defaults to 1.0.
-
-        See Also:
-            See :py:meth:`CategoricalNode.sample` for details on sampling.
+            discrete (bool, optional): if samples with Gumble–Softmax should be discretized
+                into one-hot vectors. Defaults to False.
         """
         if sample:
             logits = self.sample(
@@ -225,7 +342,7 @@ class CategoricalNode(VariationalNode):
     def reset(self, **kwargs: Any) -> None:
         r"""Resets the node state."""
         self.zero_grad()
-        self.probs.data = self.probs.new_empty(0)
+        self.logits.data = self.logits.new_empty(0)
 
     def sample(
         self,
@@ -233,13 +350,9 @@ class CategoricalNode(VariationalNode):
         generator: torch.Generator | None = None,
         from_logits: bool = True,
         as_logits: bool = False,
-        procedure: Literal[
-            "cdf-uniform",
-            "gumbel-max",
-            "gumbel-softmax-continuous",
-            "gumbel-softmax-discrete",
-        ] = "gumbel-softmax-continuous",
+        procedure: Literal["cdf-uniform", "gumbel-softmax"] = "gumbel-softmax",
         temperature: float = 1.0,
+        discrete: bool = False,
         **kwargs: Any,
     ) -> torch.Tensor:
         r"""Samples from the learned conditional distribution.
@@ -254,10 +367,12 @@ class CategoricalNode(VariationalNode):
                 as raw logits rather than as probabilities. Defaults to True.
             as_logits (bool, optional): if the activity should be returned as logits
                 rather than as probabilities. Defaults to False.
-            procedure (Literal["cdf-uniform", "gumbel-max", "gumbel-softmax-continuous", "gumbel-softmax-discrete"], optional):
-                sampling procedure to use. Defaults to "gumbel-softmax-continuous".
-            temperature (float, optional): softmax temperature used by Gumbel–Softmax methods.
+            procedure (Literal["cdf-uniform", "gumbel-softmax"], optional):
+                sampling procedure to use. Defaults to "gumbel-softmax".
+            temperature (float, optional): softmax temperature used by Gumbel–Softmax.
                 Defaults to 1.0.
+            discrete (bool, optional): if samples with Gumble–Softmax should be discretized
+                into one-hot vectors. Defaults to False.
 
         Returns:
             ~torch.Tensor: samples from the conditional distribution.
@@ -266,7 +381,7 @@ class CategoricalNode(VariationalNode):
             ValueError: invalid ``procedure`` specified.
 
         Caution:
-            The "cdf-uniform" sampling procedure is non-differentiable.
+            The sampling procedure ``"cdf-uniform"`` is non-differentiable.
 
         Note:
             If ``pred`` is not specified, then ``from_logits`` is ignored and the
@@ -281,21 +396,11 @@ class CategoricalNode(VariationalNode):
                 if from_logits:
                     pred = self._logits_to_probs(pred)
                 z = self._cdf_uniform_sample(pred, generator=generator)
-            case "gumbel-max":
-                if not from_logits:
-                    pred = self._probs_to_logits(pred)
-                z = self._gumbel_max_sample(pred, generator=generator)
-            case "gumbel-softmax-continuous":
+            case "gumbel-softmax":
                 if not from_logits:
                     pred = self._probs_to_logits(pred)
                 z = self._gumbel_softmax_sample(
-                    pred, temperature, False, generator=generator
-                )
-            case "gumbel-softmax-discrete":
-                if not from_logits:
-                    pred = self._probs_to_logits(pred)
-                z = self._gumbel_softmax_sample(
-                    pred, temperature, True, generator=generator
+                    pred, temperature, discrete, generator=generator
                 )
             case _:
                 raise ValueError(f"invalid `procedure` '{procedure}' specified")
