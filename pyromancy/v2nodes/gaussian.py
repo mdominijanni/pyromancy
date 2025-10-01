@@ -184,7 +184,7 @@ class StandardGaussianNode(AbstractGaussianNode):
 
         Args:
             pred (~torch.Tensor): prediction of the node's activity, :math:`\boldsymbol{\mu}`.
-            fn (Literal["nll", "kld", "ce"], optional): mode for computing the energy.
+            fn (~typing.Literal["nll", "kld", "ce"], optional): mode for computing the energy.
                 Defaults to "nll".
 
         Returns:
@@ -436,7 +436,7 @@ class IsotropicGaussianNode(AbstractGaussianNode):
 
         Args:
             pred (~torch.Tensor): prediction of the node's activity, :math:`\boldsymbol{\mu}`.
-            fn (Literal["nll", "kld", "ce"], optional): mode for computing the energy.
+            fn (~typing.Literal["nll", "kld", "ce"], optional): mode for computing the energy.
                 Defaults to "nll".
 
         Returns:
@@ -694,7 +694,7 @@ class FactorizedGaussianNode(AbstractGaussianNode):
 
         Args:
             pred (~torch.Tensor): prediction of the node's activity, :math:`\boldsymbol{\mu}`.
-            fn (Literal["nll", "kld", "ce"], optional): mode for computing the energy.
+            fn (~typing.Literal["nll", "kld", "ce"], optional): mode for computing the energy.
                 Defaults to "nll".
 
         Returns:
@@ -976,7 +976,7 @@ class MultivariateGaussianNode(AbstractGaussianNode):
 
         Args:
             pred (~torch.Tensor): prediction of the node's activity, :math:`\boldsymbol{\mu}`.
-            fn (Literal["nll", "kld", "ce"], optional): mode for computing the energy.
+            fn (~typing.Literal["nll", "kld", "ce"], optional): mode for computing the energy.
                 Defaults to "nll".
 
         Returns:

@@ -95,7 +95,6 @@ class TestStandardGaussianNode:
         E = (quad + norm).flatten(1).sum(1)
 
         # compare
-        print(torch.abs(node.energy(mu, energyfn) - E).max())
         assert torch.allclose(node.energy(mu, energyfn), E)
 
     @pytest.mark.parametrize(
@@ -144,7 +143,6 @@ class TestStandardGaussianNode:
         E = (quad + norm).flatten(1).sum(1)
 
         # compare
-        print(torch.abs(node.energy(mu, energyfn) - E).max())
         assert torch.allclose(node.energy(mu, energyfn), E)
 
     @pytest.mark.parametrize(
@@ -173,7 +171,7 @@ class TestStandardGaussianNode:
 
         (grad,) = torch.autograd.grad(
             outputs=E,
-            inputs=node.activity(),
+            inputs=node.mean,
             grad_outputs=torch.ones_like(E),
         )
 
@@ -396,7 +394,6 @@ class TestIsotropicGaussianNode:
         E = (quad + norm).flatten(1).sum(1)
 
         # compare
-        print(torch.abs(node.energy(mu, energyfn) - E).max())
         assert torch.allclose(node.energy(mu, energyfn), E)
 
     @pytest.mark.parametrize(
@@ -446,7 +443,6 @@ class TestIsotropicGaussianNode:
         E = (quad + norm).flatten(1).sum(1)
 
         # compare
-        print(torch.abs(node.energy(mu, energyfn) - E).max())
         assert torch.allclose(node.energy(mu, energyfn), E)
 
     @pytest.mark.parametrize(
@@ -478,7 +474,7 @@ class TestIsotropicGaussianNode:
 
         (grad,) = torch.autograd.grad(
             outputs=E,
-            inputs=node.activity(),
+            inputs=node.mean,
             grad_outputs=torch.ones_like(E),
         )
 
@@ -715,7 +711,6 @@ class TestFactorizedGaussianNode:
         E = (quad + norm).flatten(1).sum(1)
 
         # compare
-        print(torch.abs(node.energy(mu, energyfn) - E).max())
         assert torch.allclose(node.energy(mu, energyfn), E)
 
     @pytest.mark.parametrize(
@@ -765,7 +760,6 @@ class TestFactorizedGaussianNode:
         E = (quad + norm).flatten(1).sum(1)
 
         # compare
-        print(torch.abs(node.energy(mu, energyfn) - E).max())
         assert torch.allclose(node.energy(mu, energyfn), E)
 
     @pytest.mark.parametrize(
@@ -797,7 +791,7 @@ class TestFactorizedGaussianNode:
 
         (grad,) = torch.autograd.grad(
             outputs=E,
-            inputs=node.activity(),
+            inputs=node.mean,
             grad_outputs=torch.ones_like(E),
         )
 
@@ -1035,7 +1029,6 @@ class TestMultivariateGaussianNode:
         E = (quad + norm).flatten(1).sum(1)
 
         # compare
-        print(torch.abs(node.energy(mu, energyfn) - E).max())
         assert torch.allclose(node.energy(mu, energyfn), E)
 
     @pytest.mark.parametrize(
@@ -1086,7 +1079,6 @@ class TestMultivariateGaussianNode:
         E = (quad + norm).flatten(1).sum(1)
 
         # compare
-        print(torch.abs(node.energy(mu, energyfn) - E).max())
         assert torch.allclose(node.energy(mu, energyfn), E)
 
     @pytest.mark.parametrize(
@@ -1119,7 +1111,7 @@ class TestMultivariateGaussianNode:
 
         (grad,) = torch.autograd.grad(
             outputs=E,
-            inputs=node.activity(),
+            inputs=node.mean,
             grad_outputs=torch.ones_like(E),
         )
 

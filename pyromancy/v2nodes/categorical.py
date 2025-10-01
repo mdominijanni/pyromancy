@@ -12,9 +12,10 @@ from .base import VariationalNode
 class CategoricalNode(VariationalNode):
     r"""Categorical distribution parameterized by logits.
 
+    Uses the method by `Pinchetti et al. <https://arxiv.org/abs/2211.03481>`__
+    to generalize predictive coding beyond Gaussian distributions.
+
     Args:
-        mask_probs (bool, optional): if zero values for input probabilities should
-            be masked to ``-inf``. Defaults to False.
         eps_probs (float, optional): minimum values input probabilities will be
             clamped to. Defaults to 1e-12.
 
@@ -25,24 +26,19 @@ class CategoricalNode(VariationalNode):
     Raises:
         ValueError: ``eps_probs`` must be nonnegative.
 
-    Important:
-        When ``mask_probs`` is True, then input probabilities are not bounded by
-        ``eps_probs``. In practice, this will lead to numerical issues under certain
-        conditions, such as when computing energy using KL-divergence.
-
     Tip:
         It is *strongly* recommended that probabilities are only passed in for
-        manual initialization, and that logits are passed in elsewhere.
+        direct initialization, and that logits are passed in elsewhere. Additionally,
+        it is recommended that ``eps_probs`` be used for numerical stability.
     """
 
     logits: nn.Parameter
-    _mask_probs: bool
     _eps_probs: float
+    _native_logits: bool
 
     def __init__(
         self,
         *shape: int | None,
-        mask_probs: bool = True,
         eps_probs: float = 1e-12,
         **kwargs: Any,
     ) -> None:
@@ -51,9 +47,23 @@ class CategoricalNode(VariationalNode):
         if eps_probs < 0:
             raise ValueError(f"`eps_probs` must be nonnegative, received {eps_probs}")
 
-        self.probs = nn.Parameter(torch.empty(0), True)
-        self._mask_probs = bool(mask_probs)
+        self.logits = nn.Parameter(torch.empty(0), True)
         self._eps_probs = float(eps_probs)
+        self._native_logits = False
+
+    def _condition_probs(self, probs: torch.Tensor) -> torch.Tensor:
+        r"""Applies conditioning to input probabilities.
+
+        Args:
+            probs (torch.Tensor): normalized probabilities.
+
+        Returns:
+            torch.Tensor: approximately normalized probabilities, bounded for stability.
+        """
+        if self._eps_probs is not None:
+            probs = probs.clamp_min(self._eps_probs)
+
+        return probs
 
     def _logits_to_probs(self, logits: torch.Tensor) -> torch.Tensor:
         r"""Converts logits to probabilities.
@@ -64,7 +74,7 @@ class CategoricalNode(VariationalNode):
         Returns:
             torch.Tensor: softmax normalized probabilities.
         """
-        logits, pragma = self.shapeobj.coalesce(self.logits)
+        logits, pragma = self.shapeobj.coalesce(logits)
 
         probs = F.softmax(logits, dim=1)
         probs = self.shapeobj.disperse(probs, pragma)
@@ -80,9 +90,7 @@ class CategoricalNode(VariationalNode):
         Returns:
             torch.Tensor: unnormalized logits.
         """
-        if self._mask_probs:
-            probs = probs.masked_fill(probs == 0, float("-inf"))
-        else:
+        if self._eps_probs is not None:
             probs = probs.clamp_min(self._eps_probs)
 
         logits = probs.log()
@@ -109,7 +117,7 @@ class CategoricalNode(VariationalNode):
         cdf[:, -1] = 1.0
 
         uniforms = cdf.new_empty(cdf.size(0), 1).uniform_(generator=generator)
-        idx = torch.searchsorted(cdf, uniforms, right=True).squeeze(1)
+        idx = torch.searchsorted(cdf, uniforms, right=True)
 
         y = torch.zeros_like(probs).scatter_(1, idx, 1.0)
         y = self.shapeobj.disperse(y, pragma)
@@ -222,9 +230,14 @@ class CategoricalNode(VariationalNode):
                     Hqp = torch.logsumexp(p_logits, dim=1) - (p_logits * q_probs).sum(1)
                 else:
                     p_probs, _ = self.shapeobj.coalesce(pred)
-                    Hqp = -torch.special.xlogy(q_probs, p_probs)
+                    p_probs = self._condition_probs(p_probs)
+                    Hqp = -torch.special.xlogy(q_probs, p_probs).sum(1)
 
-                Hq = torch.logsumexp(q_logits, dim=1) - (q_logits * q_probs).sum(1)
+                if self._native_logits:
+                    Hq = torch.logsumexp(q_logits, dim=1) - (q_logits * q_probs).sum(1)
+                else:
+                    Hq = -torch.special.xlogy(q_probs, q_probs).sum(1)
+
                 E = Hqp - Hq
 
             case "ce":
@@ -233,7 +246,8 @@ class CategoricalNode(VariationalNode):
                     Hqp = torch.logsumexp(p_logits, dim=1) - (p_logits * q_probs).sum(1)
                 else:
                     p_probs, _ = self.shapeobj.coalesce(pred)
-                    Hqp = -torch.special.xlogy(q_probs, p_probs)
+                    p_probs = self._condition_probs(p_probs)
+                    Hqp = -torch.special.xlogy(q_probs, p_probs).sum(1)
 
                 E = Hqp
 
@@ -250,7 +264,82 @@ class CategoricalNode(VariationalNode):
         fn: Literal["kld", "ce"] = "kld",
         **kwargs: Any,
     ) -> torch.Tensor:
-        return torch.empty(0)
+        r"""Computes elementwise error between predictions and the node's activity.
+
+        .. math::
+            \begin{aligned}
+                \boldsymbol{\epsilon}_\text{KL} &=
+                q \odot \left(\log q - \log p - D_\text{KL}(q \parallel p)\right) \\
+                \boldsymbol{\epsilon}_\text{CE} &=
+                q \odot \left(\langle q, \log p \rangle - \log p\right)
+            \end{aligned}
+
+        Args:
+            pred (~torch.Tensor): prediction of the node's activity, :math:`p`
+                or :math:`\log p`.
+            from_logits (bool, optional): if the prediction should be interpreted
+                as raw logits rather than as probabilities. Defaults to True.
+            fn (~typing.Literal["kld", "ce"], optional): mode for computing the error.
+                Defaults to "kld".
+
+        Returns:
+            ~torch.Tensor: elementwise error between the activity and the predictions.
+
+        Raises:
+            ValueError: invalid ``fn`` specified.
+
+        Info:
+            The `fn` parameter controls how error is computed.
+
+            - Kullback–Leibler Divergence ("kld"): reverse KL-divergence is taken
+                between the node's activity and the prediction.
+            - Cross-Entropy ("ce"): cross-entropy is taken between the node's activity
+                and the prediction.
+        """
+        q_logits, pragma = self.shapeobj.coalesce(self.logits)
+        q_probs = F.softmax(q_logits, dim=1)
+        q_logprob = F.log_softmax(q_logits, dim=1)
+
+        match fn:
+            case "kld":
+                if from_logits:
+                    p_logits, _ = self.shapeobj.coalesce(pred)
+                    p_lse = torch.logsumexp(p_logits, dim=1, keepdim=True)
+                    Hqp = p_lse - (p_logits * q_probs).sum(1, keepdim=True)
+                    p_logprob = p_logits - p_lse
+                else:
+                    p_probs, _ = self.shapeobj.coalesce(pred)
+                    p_probs = self._condition_probs(p_probs)
+                    Hqp = -torch.special.xlogy(q_probs, p_probs).sum(1, keepdim=True)
+                    p_logprob = p_probs.log()
+
+                if self._native_logits:
+                    q_lse = torch.logsumexp(q_logits, dim=1, keepdim=True)
+                    Hq = q_lse - (q_logits * q_probs).sum(1, keepdim=True)
+                    q_logprob = q_logits - q_lse
+                else:
+                    Hq = -torch.special.xlogy(q_probs, q_probs).sum(1, keepdim=True)
+                    q_logprob = F.log_softmax(q_logits, dim=1)
+
+                E = Hqp - Hq
+                err = q_probs * (q_logprob - p_logprob - E)
+
+            case "ce":
+                if from_logits:
+                    p_logits, _ = self.shapeobj.coalesce(pred)
+                else:
+                    p_logits = self._probs_to_logits(pred)
+                    p_logits, _ = self.shapeobj.coalesce(p_logits)
+
+                exp_q_logp = (q_probs * p_logits).sum(dim=1, keepdim=True)
+                err = q_probs * (exp_q_logp - p_logits)
+
+            case _:
+                raise ValueError(f"invalid `fn` '{fn}' specified")
+
+        err = self.shapeobj.disperse(err, pragma)
+
+        return err
 
     @torch.no_grad()
     def initialize(
@@ -274,7 +363,7 @@ class CategoricalNode(VariationalNode):
                 as raw logits rather than as probabilities. Defaults to True.
             as_logits (bool, optional): if the activity should be returned as logits
                 rather than as probabilities. Defaults to False.
-            procedure (Literal["cdf-uniform", "gumbel-softmax"], optional):
+            procedure (~typing.Literal["cdf-uniform", "gumbel-softmax"], optional):
                 sampling procedure to use when ``sample=True``. Defaults to "gumbel-softmax-continuous".
             temperature (float, optional): softmax temperature used by Gumbel–Softmax methods.
                 Defaults to 1.0.
@@ -289,10 +378,12 @@ class CategoricalNode(VariationalNode):
                 as_logits=True,
                 **kwargs,
             )
+            native_logits = False
         else:
             logits = self.prediction(
                 pred, from_logits=from_logits, as_logits=True, **kwargs
             )
+            native_logits = from_logits
 
         if not self.shapeobj.compat(*logits.shape):
             raise ValueError(
@@ -302,6 +393,7 @@ class CategoricalNode(VariationalNode):
 
         self.logits.data = self.logits.data.new_empty(*logits.shape)
         self.logits.copy_(logits)
+        self._native_logits = native_logits
 
         return self.activity(as_logits=as_logits, **kwargs)
 
@@ -343,6 +435,7 @@ class CategoricalNode(VariationalNode):
         r"""Resets the node state."""
         self.zero_grad()
         self.logits.data = self.logits.new_empty(0)
+        self._native_logits = False
 
     def sample(
         self,
@@ -367,7 +460,7 @@ class CategoricalNode(VariationalNode):
                 as raw logits rather than as probabilities. Defaults to True.
             as_logits (bool, optional): if the activity should be returned as logits
                 rather than as probabilities. Defaults to False.
-            procedure (Literal["cdf-uniform", "gumbel-softmax"], optional):
+            procedure (~typing.Literal["cdf-uniform", "gumbel-softmax"], optional):
                 sampling procedure to use. Defaults to "gumbel-softmax".
             temperature (float, optional): softmax temperature used by Gumbel–Softmax.
                 Defaults to 1.0.
