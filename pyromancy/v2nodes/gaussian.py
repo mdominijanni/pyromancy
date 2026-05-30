@@ -18,8 +18,8 @@ class AbstractGaussianNode(VariationalNode, ABC):
     .. math::
         f(\mathbf{x}; \boldsymbol{\mu}, \boldsymbol{\Sigma}) =
         \frac{1}{\sqrt{(2\pi)^k \lvert\boldsymbol{\Sigma}\rvert}}
-        \exp \left(-\frac{1}{2} (\mathbf{z} - \boldsymbol{\mu})
-        \boldsymbol{\Sigma}^{-1} (\mathbf{z} - \boldsymbol{\mu})^\intercal \right)
+        \exp \left(-\frac{1}{2} (\mathbf{x} - \boldsymbol{\mu})
+        \boldsymbol{\Sigma}^{-1} (\mathbf{x} - \boldsymbol{\mu})^\intercal \right)
 
     where :math:`\mathbf{x}` is a sample, :math:`\boldsymbol{\mu}` is the mean,
     and :math:`\boldsymbol{\Sigma}` is the covariance matrix,
@@ -112,7 +112,7 @@ class AbstractGaussianNode(VariationalNode, ABC):
             pred (~torch.Tensor): raw prediction from the parent.
 
         Returns:
-            ~torch.Tensor: expanded bias vector.
+            ~torch.Tensor: prediction of the node's activity.
         """
         return pred
 
@@ -292,7 +292,7 @@ class IsotropicGaussianNode(AbstractGaussianNode):
     Assumes the covariance matrix is a scalar matrix.
 
     .. math::
-        \boldsymbol{\Sigma} = \sigma I
+        \boldsymbol{\Sigma} = \sigma^2 I
 
     Args:
         *shape (int | None): shape of the node's learned state.
@@ -300,7 +300,7 @@ class IsotropicGaussianNode(AbstractGaussianNode):
 
     Attributes:
         mean (~torch.nn.parameter.Parameter): current value of the node :math:`\mathbf{z}`.
-        logvar (~torch.nn.parameter.Parameter): log of the distribution variance :math:`\log{\sigma}`.
+        logvar (~torch.nn.parameter.Parameter): log of the distribution variance :math:`\log{\sigma^2}`.
     """
 
     logvar: nn.Parameter
@@ -318,7 +318,7 @@ class IsotropicGaussianNode(AbstractGaussianNode):
         r"""Covariance matrix of the Gaussian distribution.
 
         .. math::
-            \boldsymbol{\Sigma} = \sigma I
+            \boldsymbol{\Sigma} = \sigma^2 I
 
         Args:
             value (float | ~torch.Tensor): new covariance for the distribution.
@@ -419,16 +419,16 @@ class IsotropicGaussianNode(AbstractGaussianNode):
             \begin{aligned}
                 \mathcal{E}_\text{NLL} &= \frac{1}{2} \left(
                 (\mathbf{z} - \boldsymbol{\mu})
-                ((\mathbf{z} - \boldsymbol{\mu}) \sigma^{-1})^\intercal
-                + k \log \sigma \right)
+                ((\mathbf{z} - \boldsymbol{\mu}) \sigma^{-2})^\intercal
+                + k \log \sigma^2 \right)
                 + \frac{k}{2} \log 2 \pi \\
                 \mathcal{E}_\text{KL} &= \frac{1}{2} \left(
                 (\mathbf{z} - \boldsymbol{\mu})
-                ((\mathbf{z} - \boldsymbol{\mu}) \sigma^{-1})^\intercal \right) \\
+                ((\mathbf{z} - \boldsymbol{\mu}) \sigma^{-2})^\intercal \right) \\
                 \mathcal{E}_\text{CE} &= \frac{1}{2} \left(
                 (\mathbf{z} - \boldsymbol{\mu})
-                ((\mathbf{z} - \boldsymbol{\mu}) \sigma^{-1})^\intercal
-                + k \log \sigma \right)
+                ((\mathbf{z} - \boldsymbol{\mu}) \sigma^{-2})^\intercal
+                + k \log \sigma^2 \right)
                 + \frac{k}{2} \log 2 \pi + \frac{k}{2}
             \end{aligned}
 
@@ -494,7 +494,7 @@ class IsotropicGaussianNode(AbstractGaussianNode):
         r"""Computes elementwise error between predictions and the node's activity.
 
         .. math::
-            \boldsymbol{\epsilon} = \frac{\mathbf{z} - \boldsymbol{\mu}}{\sigma}
+            \boldsymbol{\epsilon} = \frac{\mathbf{z} - \boldsymbol{\mu}}{\sigma^2}
 
         Args:
             pred (~torch.Tensor): prediction of the node's activity, :math:`\boldsymbol{\mu}`.
@@ -534,7 +534,8 @@ class IsotropicGaussianNode(AbstractGaussianNode):
         eps = torch.randn(mu.shape, generator=generator, out=torch.empty_like(mu))
 
         # color noise and shift
-        z = torch.add(mu, eps, alpha=self.logvar.exp().sqrt().item())
+        std = (0.5 * self.logvar).exp()
+        z = mu + std * eps
         return self.shapeobj.disperse(z, pragma)
 
 
@@ -547,10 +548,10 @@ class FactorizedGaussianNode(AbstractGaussianNode):
     .. math::
         \boldsymbol{\Sigma} =
         \begin{bmatrix}
-            \sigma_1 & 0 & \cdots & 0 \\
-            0 & \sigma_2 & \cdots & 0 \\
+            \sigma_1^2 & 0 & \cdots & 0 \\
+            0 & \sigma_2^2 & \cdots & 0 \\
             \vdots & \vdots & \ddots & \vdots \\
-            0 & 0 & \cdots & \sigma_N
+            0 & 0 & \cdots & \sigma_N^2
         \end{bmatrix}
 
     Args:
@@ -559,7 +560,7 @@ class FactorizedGaussianNode(AbstractGaussianNode):
 
     Attributes:
         mean (~torch.nn.parameter.Parameter): current value of the node :math:`\mathbf{z}`.
-        logvar (~torch.nn.parameter.Parameter): log of the distribution variances :math:`\log{\boldsymbol{\sigma}}`.
+        logvar (~torch.nn.parameter.Parameter): log of the distribution variances :math:`\log{\boldsymbol{\sigma}^{\odot 2}}`.
     """
 
     logvar: nn.Parameter
@@ -586,7 +587,7 @@ class FactorizedGaussianNode(AbstractGaussianNode):
 
         .. math::
             \boldsymbol{\Sigma} =
-            \operatorname{diag}(\sigma_1, \sigma_2, \ldots, \sigma_N)
+            \operatorname{diag}(\sigma_1^2, \sigma_2^2, \ldots, \sigma_N^2)
 
         Args:
             value (float | ~torch.Tensor): new covariance for the distribution.
@@ -676,17 +677,17 @@ class FactorizedGaussianNode(AbstractGaussianNode):
             \begin{aligned}
                 \mathcal{E}_\text{NLL} &= \frac{1}{2} \left(
                 (\mathbf{z} - \boldsymbol{\mu})
-                ((\mathbf{z} - \boldsymbol{\mu}) \oslash \boldsymbol{\sigma})^\intercal
-                + \sum_i \log \boldsymbol{\sigma}_i \right)
+                ((\mathbf{z} - \boldsymbol{\mu}) \oslash \boldsymbol{\sigma}^{\odot 2})^\intercal
+                + \sum_i \log \boldsymbol{\sigma}_i^2 \right)
                 + \frac{k}{2} \log 2 \pi \\
                 \mathcal{E}_\text{KL} &= \frac{1}{2} \left(
                 (\mathbf{z} - \boldsymbol{\mu})
-                ((\mathbf{z} - \boldsymbol{\mu}) \oslash \boldsymbol{\sigma})^\intercal
+                ((\mathbf{z} - \boldsymbol{\mu}) \oslash \boldsymbol{\sigma}^{\odot 2})^\intercal
                 \right) \\
                 \mathcal{E}_\text{CE} &= \frac{1}{2} \left(
                 (\mathbf{z} - \boldsymbol{\mu})
-                ((\mathbf{z} - \boldsymbol{\mu}) \oslash \boldsymbol{\sigma})^\intercal
-                + \sum_i \log \boldsymbol{\sigma}_i \right)
+                ((\mathbf{z} - \boldsymbol{\mu}) \oslash \boldsymbol{\sigma}^{\odot 2})^\intercal
+                + \sum_i \log \boldsymbol{\sigma}_i^2 \right)
                 + \frac{k}{2} \log 2 \pi + \frac{k}{2}
             \end{aligned}
 
@@ -753,7 +754,7 @@ class FactorizedGaussianNode(AbstractGaussianNode):
 
         .. math::
             \boldsymbol{\epsilon} =
-            (\mathbf{z} - \boldsymbol{\mu}) \oslash \boldsymbol{\sigma}
+            (\mathbf{z} - \boldsymbol{\mu}) \oslash \boldsymbol{\sigma}^{\odot 2}
 
         Args:
             pred (~torch.Tensor): prediction of the node's activity, :math:`\boldsymbol{\mu}`.
@@ -796,7 +797,8 @@ class FactorizedGaussianNode(AbstractGaussianNode):
         eps = torch.randn(mu.shape, generator=generator, out=torch.empty_like(mu))
 
         # color noise and shift
-        z = mu + self.logvar.exp().sqrt() * eps
+        std = (0.5 * self.logvar).exp()
+        z = mu + std * eps
         return self.shapeobj.disperse(z, pragma)
 
 
@@ -815,7 +817,7 @@ class MultivariateGaussianNode(AbstractGaussianNode):
 
     Args:
         *shape (int | None): shape of the node's learned state.
-        variance (float | ~torch.Tensor, optional): initial variance. Defaults to 1.0.
+        covariance (float | ~torch.Tensor, optional): initial covariance. Defaults to 1.0.
 
     Attributes:
         mean (~torch.nn.parameter.Parameter): current value of the node :math:`\mathbf{z}`.
@@ -861,10 +863,10 @@ class MultivariateGaussianNode(AbstractGaussianNode):
         .. math::
             \boldsymbol{\Sigma} =
             \begin{bmatrix}
-                \sigma_{1,1} & \sigma_{1,2} & \cdots & \sigma_{1,N} \\
-                \sigma_{2,1} & \sigma_{2,2} & \cdots & \sigma_{2,N} \\
+                \Sigma_{11} & \Sigma_{12} & \cdots & \Sigma_{1N} \\
+                \Sigma_{21} & \Sigma_{22} & \cdots & \Sigma_{2N} \\
                 \vdots & \vdots & \ddots & \vdots \\
-                \sigma_{N,1} & \sigma_{N,2} & \cdots & \sigma_{N,N} \\
+                \Sigma_{N1} & \Sigma_{N2} & \cdots & \Sigma_{NN}
             \end{bmatrix}
 
         Args:

@@ -336,7 +336,7 @@ class LambdaModule(nn.Module):
         )
 
 
-class TypedModuleDict[T: nn.Module](nn.Module, MutableMapping):
+class TypedModuleDict[T: nn.Module](nn.Module, MutableMapping[str, T]):
     r"""Holds submodules of a specific type in a dictionary.
 
     This class is nearly identical to :py:class:`~torch.nn.ModuleDict`, but it allows
@@ -364,7 +364,7 @@ class TypedModuleDict[T: nn.Module](nn.Module, MutableMapping):
     ) -> None:
         if not issubclass(narrowing, nn.Module):
             raise TypeError(
-                f"the type specified by `narrowing`, `{narrowing.__name__}` "
+                f"the type specified by `narrowing`, `{narrowing.__name__}`, "
                 f"must be a subclass of `{nn.Module.__name__}`"
             )
 

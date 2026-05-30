@@ -28,7 +28,7 @@ class BiasNode(Node):
         with torch.no_grad():
             self.bias.fill_(0.0)
 
-    def activity(self) -> torch.Tensor:
+    def activity(self, **kwargs) -> torch.Tensor:
         r"""Activity of the node.
 
         Returns:
@@ -106,7 +106,7 @@ class InputNode(Node):
         if trainable:
             set_dynamic_estep_params(self, "value")
 
-    def activity(self) -> nn.Parameter:
+    def activity(self, **kwargs) -> nn.Parameter:
         r"""Activity of the node.
 
         Args:

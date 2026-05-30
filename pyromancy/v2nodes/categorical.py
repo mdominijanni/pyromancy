@@ -16,6 +16,7 @@ class CategoricalNode(VariationalNode):
     to generalize predictive coding beyond Gaussian distributions.
 
     Args:
+        *shape (int | None): shape of the node's learned state.
         eps_probs (float, optional): minimum values input probabilities will be
             clamped to. Defaults to 1e-12.
 
@@ -29,7 +30,7 @@ class CategoricalNode(VariationalNode):
     Tip:
         It is *strongly* recommended that probabilities are only passed in for
         direct initialization, and that logits are passed in elsewhere. Additionally,
-        it is recommended that ``eps_probs`` be used for numerical stability.
+        it is recommended that ``eps_probs`` be nonzero for numerical stability.
     """
 
     logits: nn.Parameter
@@ -210,9 +211,9 @@ class CategoricalNode(VariationalNode):
             The `fn` parameter controls how energy is computed.
 
             - Kullback–Leibler Divergence ("kld"): the node's activity is treated as the
-              as the distribution's mean, and reverse KL-divergence is taken.
+              as the distribution's parameters, and reverse KL-divergence is taken.
             - Cross-Entropy ("ce"): the node's activity is treated as the
-              as the distribution's mean, and cross-entropy is taken.
+              as the distribution's parameters, and cross-entropy is taken.
 
             Recall that KL-divergence and cross-entropy vary by the entropy of the left-hand
             distribution.
@@ -363,9 +364,11 @@ class CategoricalNode(VariationalNode):
                 as raw logits rather than as probabilities. Defaults to True.
             as_logits (bool, optional): if the activity should be returned as logits
                 rather than as probabilities. Defaults to False.
+
+        Keyword Args:
             procedure (~typing.Literal["cdf-uniform", "gumbel-softmax"], optional):
                 sampling procedure to use when ``sample=True``. Defaults to "gumbel-softmax-continuous".
-            temperature (float, optional): softmax temperature used by Gumbel–Softmax methods.
+            temperature (float, optional): softmax temperature used by Gumbel–Softmax.
                 Defaults to 1.0.
             discrete (bool, optional): if samples with Gumble–Softmax should be discretized
                 into one-hot vectors. Defaults to False.
@@ -415,9 +418,6 @@ class CategoricalNode(VariationalNode):
 
         Returns:
             ~torch.Tensor: prediction of the node's activity.
-
-        Important:
-            Every input must have the same shape.
         """
         if from_logits:
             if as_logits:
