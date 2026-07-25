@@ -11,6 +11,7 @@ from .params import (
     set_dynamic_estep_params,
     set_dynamic_mstep_params,
 )
+from . import v2nodes
 
 __all__ = [
     # core module
@@ -28,6 +29,7 @@ __all__ = [
     # additional modules
     "nodes",
     "model",
+    "v2nodes",
 ]
 
-__version__ = "0.0.2"
+__version__ = "0.1.0"

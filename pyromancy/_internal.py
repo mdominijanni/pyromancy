@@ -1,5 +1,7 @@
+from __future__ import annotations
 import itertools
 from collections.abc import Hashable, Iterator, KeysView, MutableMapping, Sequence
+from typing import Any
 
 
 class _Poset[T: Hashable](MutableMapping):
@@ -130,3 +132,20 @@ class _Poset[T: Hashable](MutableMapping):
             raise IndexError(
                 f"cannot access `rank` {rank} from a poset with {self.nranks} ranks"
             )
+
+
+class _Final(type):
+    r"""Metaclass to prevent subclassing."""
+
+    def __new__(
+        mcs,
+        name: str,
+        bases: tuple[type, ...],
+        namespace: dict[str, Any],
+        /,
+        **kwargs: Any,
+    ) -> _Final:
+        for base in bases:
+            if isinstance(base, _Final):
+                raise TypeError(f"base class `{base.__name__}` prohibits subclassing")
+        return type.__new__(mcs, name, bases, namespace, **kwargs)
